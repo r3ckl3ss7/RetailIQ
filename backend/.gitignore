@@ -1,2 +1,4 @@
 .env
 /renv
+__pycache__/
+*.py[cod]
