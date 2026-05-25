@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from db.database import engine
-from schemas.user import create_table
+from models.user import create_table
+from routes.auth import router as authRouter
 app = FastAPI()
 
 
@@ -21,3 +22,6 @@ def db_health():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return {"database": "connected"}
+
+
+app.include_router(authRouter)
