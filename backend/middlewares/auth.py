@@ -10,6 +10,19 @@ async def auth(
     user_id: int,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> int:
+    token_user_id = await current_user(credentials)
+
+    if token_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to access this business",
+        )
+    return token_user_id
+
+
+async def current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> int:
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -21,10 +34,4 @@ async def auth(
         raw_token = raw_token[6:].lstrip(" ")
 
     token_data = verify_token(raw_token)
-
-    if token_data.get("user_id") != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to access this business",
-        )
     return token_data.get("user_id")

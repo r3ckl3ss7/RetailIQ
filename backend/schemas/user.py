@@ -10,5 +10,27 @@ class User(BaseModel):
     created_at: datetime
 
 
+class ContactDetails(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: int | None = None
+    phone_number: str
+    alt_phone_no: str | None = None
+    city: str
+    district: str | None = None
+    state: str
+    country: str
+    postal_code: str
+    address_line: str | None = None
+    created_at: datetime | None = None
+
+
 class Business(BaseModel):
     model_config = {"from_attributes": True}
+
+    id: int | None = None
+    business_name: str
+    category: str
+    description: str | None = None
+    created_at: datetime | None = None
+    contact_details: ContactDetails | None = None
