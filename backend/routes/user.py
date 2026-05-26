@@ -226,3 +226,64 @@ async def update_business_details(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+# DELETE - User
+@router.delete('/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: int,
+    current_user_id:int=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete this user",
+        )
+    try:
+        user=db.query(UserModel).filter(UserModel.id==user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )        
+        db.delete(
+            user
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+# DELETE Business 
+@router.delete('/business/{business_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_business(
+    business_id: int,
+    current_user_id: int = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    business=db.query(BusinessModel).filter(BusinessModel.id==business_id).first()
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found",
+        )
+
+    if business.user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete this business",
+        )
+
+    try:
+        db.delete(business)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
