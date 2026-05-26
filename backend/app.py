@@ -4,6 +4,7 @@ from sqlalchemy import text
 from db.database import engine
 from models.user import create_table
 from routes.auth import router as authRouter
+from routes.user import router as userRouter
 app = FastAPI()
 
 
@@ -25,3 +26,4 @@ def db_health():
 
 
 app.include_router(authRouter)
+app.include_router(userRouter)

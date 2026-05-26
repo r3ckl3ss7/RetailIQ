@@ -41,34 +41,34 @@ def verify_token(token: str):
 
 
 def register_user(db: Session, payload: RegisterModel):
-    existing = (
-        db.query(UserModel)
-        .filter(UserModel.email == payload.email)
-        .first()
-    )
+	existing = (
+		db.query(UserModel)
+		.filter(UserModel.email == payload.email)
+		.first()
+	)
 
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
+	if existing:
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Email already registered",
+		)
 
-    user = UserModel(
-        name=payload.name,
-        email=payload.email,
-        password=hash_password(payload.password),
-    )
+	user = UserModel(
+		name=payload.name,
+		email=payload.email,
+		password=hash_password(payload.password),
+	)
 
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+	db.add(user)
+	db.commit()
+	db.refresh(user)
 
-    return {
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "created_at": user.created_at,
-    }
+	return {
+		"id": user.id,
+		"name": user.name,
+		"email": user.email,
+		"created_at": user.created_at,
+	}
 
 
 def login_user(db: Session, payload: LoginModel):
