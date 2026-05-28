@@ -1,5 +1,13 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import Integer, String, Column, ForeignKey, Text, DateTime, func
+from sqlalchemy import (
+    Integer,
+    String,
+    Column,
+    ForeignKey,
+    Text,
+    DateTime,
+    func,
+)
 from db.database import Base, engine, SessionLocal
 
 session = SessionLocal()
@@ -25,6 +33,7 @@ class User(Base):
     )
 
 
+# Align Business model with backend/models/invoice.py while keeping ownership
 class Business(Base):
     __tablename__ = "businesses"
 
@@ -33,58 +42,38 @@ class Business(Base):
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
+        nullable=False,
     )
 
-    business_name = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False, index=True)
 
-    category = Column(String(100), nullable=False)
+    gst_number = Column(String(30), nullable=True, unique=True)
 
-    description = Column(Text)
+    phone = Column(String(20), nullable=True)
+
+    email = Column(String(255), nullable=True)
+
+    address = Column(Text, nullable=True)
+
+    city = Column(String(100), nullable=True)
+
+    state = Column(String(100), nullable=True)
+
+    country = Column(String(100), default="India")
+
+    postal_code = Column(String(20), nullable=True)
+
+    logo_url = Column(Text, nullable=True)
+
+    invoice_prefix = Column(String(20), nullable=True)
+
+    currency = Column(String(10), default="INR")
+
+    timezone = Column(String(100), default="Asia/Kolkata")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="businesses")
-
-    contact_details = relationship(
-        "ContactDetails",
-        back_populates="business",
-        uselist=False,
-        cascade="all, delete"
-    )
-
-
-class ContactDetails(Base):
-    __tablename__ = "contact_details"
-
-    id = Column(Integer, primary_key=True, index=True)
-
-    business_id = Column(
-        Integer,
-        ForeignKey("businesses.id", ondelete="CASCADE"),
-        unique=True,
-        nullable=False
-    )
-
-    phone_number = Column(String(20), nullable=False)
-
-    alt_phone_no = Column(String(20))
-
-    city = Column(String(100), nullable=False)
-
-    district = Column(String(100))
-
-    state = Column(String(100), nullable=False)
-
-    country = Column(String(100), nullable=False)
-
-    postal_code = Column(String(20), nullable=False)
-
-    address_line = Column(Text)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    business = relationship("Business", back_populates="contact_details")
 
 
 def create_table():

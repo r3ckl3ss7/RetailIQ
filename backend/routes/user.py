@@ -5,7 +5,6 @@ from db.database import get_db
 from models.user import (
     User as UserModel,
     Business as BusinessModel,
-    ContactDetails as ContactDetailsModel,
 )
 from middlewares.auth import auth, current_user
 from services.auth import hash_password
@@ -69,27 +68,21 @@ async def create_business(
     db: Session = Depends(get_db),
 ) -> BusinessDetails:
     try:
-        if not payload.contact_details:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Contact details are required",
-            )
-
         new_business = BusinessModel(
             user_id=current_user_id,
-            business_name=payload.business_name,
-            category=payload.category,
-            description=payload.description,
-            contact_details=ContactDetailsModel(
-                phone_number=payload.contact_details.phone_number,
-                alt_phone_no=payload.contact_details.alt_phone_no,
-                city=payload.contact_details.city,
-                district=payload.contact_details.district,
-                state=payload.contact_details.state,
-                country=payload.contact_details.country,
-                postal_code=payload.contact_details.postal_code,
-                address_line=payload.contact_details.address_line,
-            ),
+            name=payload.name,
+            gst_number=payload.gst_number,
+            phone=payload.phone,
+            email=payload.email,
+            address=payload.address,
+            city=payload.city,
+            state=payload.state,
+            country=payload.country,
+            postal_code=payload.postal_code,
+            logo_url=payload.logo_url,
+            invoice_prefix=payload.invoice_prefix,
+            currency=payload.currency,
+            timezone=payload.timezone,
         )
         db.add(new_business)
         db.commit()
@@ -188,32 +181,32 @@ async def update_business_details(
         )
 
     try:
-        business.business_name = payload.business_name
-        business.category = payload.category
-        business.description = payload.description
-
-        if payload.contact_details:
-            cd = business.contact_details
-            if cd:
-                cd.phone_number = payload.contact_details.phone_number
-                cd.alt_phone_no = payload.contact_details.alt_phone_no
-                cd.city = payload.contact_details.city
-                cd.district = payload.contact_details.district
-                cd.state = payload.contact_details.state
-                cd.country = payload.contact_details.country
-                cd.postal_code = payload.contact_details.postal_code
-                cd.address_line = payload.contact_details.address_line
-            else:
-                business.contact_details = ContactDetailsModel(
-                    phone_number=payload.contact_details.phone_number,
-                    alt_phone_no=payload.contact_details.alt_phone_no,
-                    city=payload.contact_details.city,
-                    district=payload.contact_details.district,
-                    state=payload.contact_details.state,
-                    country=payload.contact_details.country,
-                    postal_code=payload.contact_details.postal_code,
-                    address_line=payload.contact_details.address_line,
-                )
+        if payload.name is not None:
+            business.name = payload.name
+        if payload.gst_number is not None:
+            business.gst_number = payload.gst_number
+        if payload.phone is not None:
+            business.phone = payload.phone
+        if payload.email is not None:
+            business.email = payload.email
+        if payload.address is not None:
+            business.address = payload.address
+        if payload.city is not None:
+            business.city = payload.city
+        if payload.state is not None:
+            business.state = payload.state
+        if payload.country is not None:
+            business.country = payload.country
+        if payload.postal_code is not None:
+            business.postal_code = payload.postal_code
+        if payload.logo_url is not None:
+            business.logo_url = payload.logo_url
+        if payload.invoice_prefix is not None:
+            business.invoice_prefix = payload.invoice_prefix
+        if payload.currency is not None:
+            business.currency = payload.currency
+        if payload.timezone is not None:
+            business.timezone = payload.timezone
 
         db.add(business)
         db.commit()

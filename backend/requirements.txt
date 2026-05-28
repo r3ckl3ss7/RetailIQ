@@ -10,3 +10,6 @@ dotenv
 pydantic[email]
 passlib[bcrypt]
 bcrypt==4.0.1
+
+paddleocr 
+paddlepaddle
