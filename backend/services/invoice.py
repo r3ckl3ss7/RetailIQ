@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from models.invoice import Customer, Invoice, InvoiceItem, InvoiceSource, InvoiceStatus
 from models.products import Product
 from models.user import Business
-from schemas.invoice import InvoiceCreatePayload
+from schemas.invoice import InvoiceCreatePayload, InvoiceMetadata, InvoiceUpdate
 
 
 MONEY_QUANT = Decimal("0.01")
@@ -230,3 +230,100 @@ def create_invoice(
 			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 			detail=str(exc),
 		) from exc
+
+
+def get_invoice_by_id(
+	db: Session,
+	invoice_id: int,
+) -> Invoice:
+	try:
+		invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+		if not invoice:
+			raise HTTPException(
+				status_code=status.HTTP_404_NOT_FOUND,
+				detail="Invalid invoice id",
+			)
+		return invoice
+	except HTTPException:
+		raise
+	except Exception as exc:
+		raise HTTPException(
+			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			detail=str(exc),
+		) from exc
+
+
+def get_invoice_metadata(
+	db: Session,
+	business_id: int,
+	current_user_id: int,
+) -> InvoiceMetadata:
+	business = db.query(Business).filter(Business.id == business_id).first()
+	if not business:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Business does not exist",
+		)
+	if current_user_id != business.user_id:
+		raise HTTPException(
+			status_code=status.HTTP_403_FORBIDDEN,
+			detail="Access Forbidden | Business does not belong to logged in user!",
+		)
+
+	invoice = (
+		db.query(Invoice)
+		.filter(Invoice.business_id == business_id)
+		.order_by(Invoice.created_at.desc())
+		.first()
+	)
+	if not invoice:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="No invoices found for this business",
+		)
+
+	customer_name = invoice.customer.name if invoice.customer else "Walk-in"
+	return InvoiceMetadata(
+		customer_name=customer_name,
+		status=invoice.status,
+		tax=invoice.tax or 0,
+		discount=invoice.discount or 0,
+		total=invoice.total or 0,
+	)
+
+
+def update_invoice(
+	db: Session,
+	invoice_id: int,
+	payload: InvoiceUpdate,
+	current_user_id: int,
+) -> Invoice:
+	invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+	if not invoice:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Invalid invoice id",
+		)
+
+	business = db.query(Business).filter(Business.id == invoice.business_id).first()
+	if not business or business.user_id != current_user_id:
+		raise HTTPException(
+			status_code=status.HTTP_403_FORBIDDEN,
+			detail="Access Forbidden | Business does not belong to logged in user!",
+		)
+
+	update_data = payload.model_dump(exclude_unset=True)
+	allowed_fields = {"status", "payment_id", "notes"}
+	invalid_fields = set(update_data.keys()) - allowed_fields
+	if invalid_fields:
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Only status, payment_id, and notes can be updated",
+		)
+
+	for key, value in update_data.items():
+		setattr(invoice, key, value)
+
+	db.commit()
+	db.refresh(invoice)
+	return invoice
