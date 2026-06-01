@@ -5,7 +5,7 @@ from db.database import get_db
 from sqlalchemy.orm import Session
 from models.invoice import Invoice, InvoiceItem
 from models.user import Business
-from schemas.invoice import InvoiceCreatePayload, InvoiceMetadata, InvoiceResponse
+from schemas.invoice import InvoiceCreatePayload, InvoiceMetadata, InvoiceResponse, InvoiceUpdate
 from services.invoice import create_invoice
 
 router = APIRouter(
@@ -86,3 +86,39 @@ def create_invoice_route(
     return invoice
 
 # patch invoice(status,etc)
+@router.patch('/{invoice_id}', response_model=InvoiceResponse)
+def update_invoice(
+    invoice_id: int,
+    payload: InvoiceUpdate,
+    current_user_id: int = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> InvoiceResponse:
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid invoice id",
+        )
+
+    business = db.query(Business).filter(Business.id == invoice.business_id).first()
+    if not business or business.user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access Forbidden | Business does not belong to logged in user!",
+        )
+
+    update_data = payload.model_dump(exclude_unset=True)
+    allowed_fields = {"status", "payment_id", "notes"}
+    invalid_fields = set(update_data.keys()) - allowed_fields
+    if invalid_fields:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only status, payment_id, and notes can be updated",
+        )
+
+    for key, value in update_data.items():
+        setattr(invoice, key, value)
+
+    db.commit()
+    db.refresh(invoice)
+    return invoice
