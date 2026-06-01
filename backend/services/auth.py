@@ -42,34 +42,35 @@ def verify_token(token: str):
 
 
 async def register_user(db: AsyncSession, payload: RegisterModel):
+
     result = await db.execute(
         select(UserModel).where(UserModel.email == payload.email)
     )
+
     existing = result.scalar_one_or_none()
 
-	if existing:
-		raise HTTPException(
-			status_code=status.HTTP_400_BAD_REQUEST,
-			detail="Email already registered",
-		)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
 
-	user = UserModel(
-		name=payload.name,
-		email=payload.email,
-		password=hash_password(payload.password),
-	)
+    user = UserModel(
+        name=payload.name,
+        email=payload.email,
+        password=hash_password(payload.password),
+    )
 
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-	return {
-		"id": user.id,
-		"name": user.name,
-		"email": user.email,
-		"created_at": user.created_at,
-	}
-
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "created_at": user.created_at,
+    }
 
 async def login_user(db: AsyncSession, payload: LoginModel):
     result = await db.execute(
