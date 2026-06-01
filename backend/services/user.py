@@ -1,13 +1,15 @@
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user import User as UserModel, Business as BusinessModel
 from schemas.user import Business as BusinessDetails, UpdatedBusiness, UpdateUserProfile
 from services.auth import hash_password
 
 
-def get_user_profile(db: Session, user_id: int) -> UserModel:
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+async def get_user_profile(db: AsyncSession, user_id: int) -> UserModel:
+    result = await db.execute(select(UserModel).where(UserModel.id == user_id))
+    user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -16,12 +18,15 @@ def get_user_profile(db: Session, user_id: int) -> UserModel:
     return user
 
 
-def get_business_details(
-    db: Session,
+async def get_business_details(
+    db: AsyncSession,
     user_id: int,
     business_id: int,
 ) -> BusinessModel:
-    business = db.query(BusinessModel).filter(BusinessModel.id == business_id).first()
+    result = await db.execute(
+        select(BusinessModel).where(BusinessModel.id == business_id)
+    )
+    business = result.scalar_one_or_none()
     if not business:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -35,8 +40,8 @@ def get_business_details(
     return business
 
 
-def create_business(
-    db: Session,
+async def create_business(
+    db: AsyncSession,
     payload: BusinessDetails,
     current_user_id: int,
 ) -> BusinessModel:
@@ -58,19 +63,19 @@ def create_business(
             timezone=payload.timezone,
         )
         db.add(new_business)
-        db.commit()
-        db.refresh(new_business)
+        await db.commit()
+        await db.refresh(new_business)
         return new_business
     except Exception as exc:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
 
 
-def update_profile(
-    db: Session,
+async def update_profile(
+    db: AsyncSession,
     payload: UpdateUserProfile,
     user_id: int,
     current_user_id: int,
@@ -81,7 +86,8 @@ def update_profile(
             detail="You are not allowed to modify this profile",
         )
 
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    result = await db.execute(select(UserModel).where(UserModel.id == user_id))
+    user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -93,14 +99,13 @@ def update_profile(
             user.name = payload.name
 
         if payload.email is not None:
-            existing = (
-                db.query(UserModel)
-                .filter(
+            existing_result = await db.execute(
+                select(UserModel).where(
                     UserModel.email == payload.email,
                     UserModel.id != user_id,
                 )
-                .first()
             )
+            existing = existing_result.scalar_one_or_none()
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -112,26 +117,29 @@ def update_profile(
             user.password = hash_password(payload.password)
 
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
         return user
     except HTTPException:
         raise
     except Exception as exc:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
 
 
-def update_business(
-    db: Session,
+async def update_business(
+    db: AsyncSession,
     payload: UpdatedBusiness,
     business_id: int,
     current_user_id: int,
 ) -> BusinessModel:
-    business = db.query(BusinessModel).filter(BusinessModel.id == business_id).first()
+    result = await db.execute(
+        select(BusinessModel).where(BusinessModel.id == business_id)
+    )
+    business = result.scalar_one_or_none()
     if not business:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -173,19 +181,19 @@ def update_business(
             business.timezone = payload.timezone
 
         db.add(business)
-        db.commit()
-        db.refresh(business)
+        await db.commit()
+        await db.refresh(business)
         return business
     except Exception as exc:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
 
 
-def delete_user(
-    db: Session,
+async def delete_user(
+    db: AsyncSession,
     user_id: int,
     current_user_id: int,
 ) -> None:
@@ -195,30 +203,34 @@ def delete_user(
             detail="You are not allowed to delete this user",
         )
     try:
-        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        result = await db.execute(select(UserModel).where(UserModel.id == user_id))
+        user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
         db.delete(user)
-        db.commit()
+        await db.commit()
     except HTTPException:
         raise
     except Exception as exc:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
 
 
-def delete_business(
-    db: Session,
+async def delete_business(
+    db: AsyncSession,
     business_id: int,
     current_user_id: int,
 ) -> None:
-    business = db.query(BusinessModel).filter(BusinessModel.id == business_id).first()
+    result = await db.execute(
+        select(BusinessModel).where(BusinessModel.id == business_id)
+    )
+    business = result.scalar_one_or_none()
     if not business:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -233,9 +245,9 @@ def delete_business(
 
     try:
         db.delete(business)
-        db.commit()
+        await db.commit()
     except Exception as exc:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),

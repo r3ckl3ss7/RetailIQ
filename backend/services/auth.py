@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user import User as UserModel
 from schemas.auth import LoginModel, RegisterModel
@@ -40,12 +41,11 @@ def verify_token(token: str):
         ) from exc
 
 
-def register_user(db: Session, payload: RegisterModel):
-	existing = (
-		db.query(UserModel)
-		.filter(UserModel.email == payload.email)
-		.first()
-	)
+async def register_user(db: AsyncSession, payload: RegisterModel):
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == payload.email)
+    )
+    existing = result.scalar_one_or_none()
 
 	if existing:
 		raise HTTPException(
@@ -59,9 +59,9 @@ def register_user(db: Session, payload: RegisterModel):
 		password=hash_password(payload.password),
 	)
 
-	db.add(user)
-	db.commit()
-	db.refresh(user)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
 
 	return {
 		"id": user.id,
@@ -71,12 +71,11 @@ def register_user(db: Session, payload: RegisterModel):
 	}
 
 
-def login_user(db: Session, payload: LoginModel):
-    user = (
-        db.query(UserModel)
-        .filter(UserModel.email == payload.email)
-        .first()
+async def login_user(db: AsyncSession, payload: LoginModel):
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == payload.email)
     )
+    user = result.scalar_one_or_none()
 
     if not user or not verify_password(payload.password, user.password):
         raise HTTPException(

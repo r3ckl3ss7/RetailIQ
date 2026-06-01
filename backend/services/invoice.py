@@ -1,8 +1,9 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from models.invoice import Customer, Invoice, InvoiceItem, InvoiceSource, InvoiceStatus
 from models.products import Product
@@ -25,8 +26,8 @@ def _quantize_money(value: Decimal) -> Decimal:
 	return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
 
-def _resolve_customer(
-	db: Session,
+async def _resolve_customer(
+	db: AsyncSession,
 	business_id: int,
 	payload: InvoiceCreatePayload,
 ) -> int | None:
@@ -48,12 +49,12 @@ def _resolve_customer(
 	if payload.customer.email:
 		filters.append(Customer.email == payload.customer.email)
 
-	existing = (
-		db.query(Customer)
-		.filter(Customer.business_id == business_id)
-		.filter(or_(*filters))
-		.first()
+	result = await db.execute(
+		select(Customer)
+		.where(Customer.business_id == business_id)
+		.where(or_(*filters))
 	)
+	existing = result.scalar_one_or_none()
 	if existing:
 		return existing.id
 
@@ -64,23 +65,25 @@ def _resolve_customer(
 		email=payload.customer.email,
 	)
 	db.add(customer)
-	db.flush()
+	await db.flush()
 	return customer.id
 
 
-def _resolve_product(
-	db: Session,
+async def _resolve_product(
+	db: AsyncSession,
 	business_id: int,
 	product_id: int | None,
 	sku: str | None,
 	barcode: str | None,
 ) -> Product:
 	if product_id is not None:
-		product = (
-			db.query(Product)
-			.filter(Product.id == product_id, Product.business_id == business_id)
-			.first()
+		result = await db.execute(
+			select(Product).where(
+				Product.id == product_id,
+				Product.business_id == business_id,
+			)
 		)
+		product = result.scalar_one_or_none()
 		if not product:
 			raise HTTPException(
 				status_code=status.HTTP_400_BAD_REQUEST,
@@ -94,13 +97,14 @@ def _resolve_product(
 			detail="Each item must include product_id, sku, or barcode",
 		)
 
-	query = db.query(Product).filter(Product.business_id == business_id)
+	query = select(Product).where(Product.business_id == business_id)
 	filters = []
 	if sku:
 		filters.append(Product.sku == sku)
 	if barcode:
 		filters.append(Product.barcode == barcode)
-	product = query.filter(or_(*filters)).first()
+	result = await db.execute(query.where(or_(*filters)))
+	product = result.scalar_one_or_none()
 	if not product:
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
@@ -136,17 +140,16 @@ def _calculate_totals(
 	return subtotal, tax, discount, total
 
 
-def create_invoice(
-	db: Session,
+async def create_invoice(
+	db: AsyncSession,
 	payload: InvoiceCreatePayload,
 	current_user_id: int,
 ) -> tuple[Invoice, int]:
 	try:
-		business = (
-			db.query(Business)
-			.filter(Business.id == payload.business_id)
-			.first()
+		business_result = await db.execute(
+			select(Business).where(Business.id == payload.business_id)
 		)
+		business = business_result.scalar_one_or_none()
 		if not business:
 			raise HTTPException(
 				status_code=status.HTTP_404_NOT_FOUND,
@@ -164,11 +167,11 @@ def create_invoice(
 				detail="Invoice must include at least one item",
 			)
 
-		customer_id = _resolve_customer(db, payload.business_id, payload)
+		customer_id = await _resolve_customer(db, payload.business_id, payload)
 
 		resolved_items: list[tuple[Product, int]] = []
 		for item in payload.items:
-			product = _resolve_product(
+			product = await _resolve_product(
 				db,
 				payload.business_id,
 				item.product_id,
@@ -194,7 +197,7 @@ def create_invoice(
 			notes=payload.notes,
 		)
 		db.add(invoice)
-		db.flush()
+		await db.flush()
 
 		for product, quantity in resolved_items:
 			invoice_item = InvoiceItem(
@@ -212,8 +215,8 @@ def create_invoice(
 					)
 				product.stock -= quantity
 
-		db.commit()
-		db.refresh(invoice)
+		await db.commit()
+		await db.refresh(invoice)
 
 		status_code = (
 			status.HTTP_202_ACCEPTED
@@ -222,22 +225,27 @@ def create_invoice(
 		)
 		return invoice, status_code
 	except HTTPException:
-		db.rollback()
+		await db.rollback()
 		raise
 	except Exception as exc:
-		db.rollback()
+		await db.rollback()
 		raise HTTPException(
 			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 			detail=str(exc),
 		) from exc
 
 
-def get_invoice_by_id(
-	db: Session,
+async def get_invoice_by_id(
+	db: AsyncSession,
 	invoice_id: int,
 ) -> Invoice:
 	try:
-		invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+		result = await db.execute(
+			select(Invoice)
+			.options(selectinload(Invoice.items))
+			.where(Invoice.id == invoice_id)
+		)
+		invoice = result.scalar_one_or_none()
 		if not invoice:
 			raise HTTPException(
 				status_code=status.HTTP_404_NOT_FOUND,
@@ -253,12 +261,15 @@ def get_invoice_by_id(
 		) from exc
 
 
-def get_invoice_metadata(
-	db: Session,
+async def get_invoice_metadata(
+	db: AsyncSession,
 	business_id: int,
 	current_user_id: int,
 ) -> InvoiceMetadata:
-	business = db.query(Business).filter(Business.id == business_id).first()
+	business_result = await db.execute(
+		select(Business).where(Business.id == business_id)
+	)
+	business = business_result.scalar_one_or_none()
 	if not business:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -270,12 +281,13 @@ def get_invoice_metadata(
 			detail="Access Forbidden | Business does not belong to logged in user!",
 		)
 
-	invoice = (
-		db.query(Invoice)
-		.filter(Invoice.business_id == business_id)
+	invoice_result = await db.execute(
+		select(Invoice)
+		.options(selectinload(Invoice.customer))
+		.where(Invoice.business_id == business_id)
 		.order_by(Invoice.created_at.desc())
-		.first()
 	)
+	invoice = invoice_result.scalar_one_or_none()
 	if not invoice:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -292,20 +304,26 @@ def get_invoice_metadata(
 	)
 
 
-def update_invoice(
-	db: Session,
+async def update_invoice(
+	db: AsyncSession,
 	invoice_id: int,
 	payload: InvoiceUpdate,
 	current_user_id: int,
 ) -> Invoice:
-	invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+	invoice_result = await db.execute(
+		select(Invoice).where(Invoice.id == invoice_id)
+	)
+	invoice = invoice_result.scalar_one_or_none()
 	if not invoice:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
 			detail="Invalid invoice id",
 		)
 
-	business = db.query(Business).filter(Business.id == invoice.business_id).first()
+	business_result = await db.execute(
+		select(Business).where(Business.id == invoice.business_id)
+	)
+	business = business_result.scalar_one_or_none()
 	if not business or business.user_id != current_user_id:
 		raise HTTPException(
 			status_code=status.HTTP_403_FORBIDDEN,
@@ -324,6 +342,6 @@ def update_invoice(
 	for key, value in update_data.items():
 		setattr(invoice, key, value)
 
-	db.commit()
-	db.refresh(invoice)
+	await db.commit()
+	await db.refresh(invoice)
 	return invoice

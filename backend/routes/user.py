@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import get_db
+from db.database import get_async_db
 from middlewares.auth import auth, current_user
 from services.user import (
     create_business as create_business_service,
@@ -24,12 +24,12 @@ router = APIRouter(prefix="/user", tags=["user"])
 
 # GET - Profile
 @router.get("/{user_id}", response_model=UserProfile)
-def user_profile(
+async def user_profile(
     user_id: int,
     _: int = Depends(auth),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> UserProfile:
-    return get_user_profile_service(db, user_id)
+    return await get_user_profile_service(db, user_id)
 
 # GET - Business
 @router.get('/{user_id}/{business_id}', response_model=BusinessDetails)
@@ -37,18 +37,18 @@ async def business_details(
     user_id: int,
     business_id: int,
     _: int = Depends(auth),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> BusinessDetails:
-    return get_business_details_service(db, user_id, business_id)
+    return await get_business_details_service(db, user_id, business_id)
 
 # POST - Business
 @router.post('/business', response_model=BusinessDetails)
 async def create_business(
     payload: BusinessDetails,
     current_user_id: int = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> BusinessDetails:
-    return create_business_service(db, payload, current_user_id)
+    return await create_business_service(db, payload, current_user_id)
 
 # PATCH - Profile
 @router.patch('/{user_id}', response_model=UserProfile)
@@ -56,9 +56,9 @@ async def update_profile(
     payload: UpdateUserProfile,
     user_id: int,
     current_user_id: int = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> UserProfile:
-    return update_profile_service(db, payload, user_id, current_user_id)
+    return await update_profile_service(db, payload, user_id, current_user_id)
 
 # PATCH - Business
 @router.patch('/business/{business_id}', response_model=BusinessDetails)
@@ -66,9 +66,9 @@ async def update_business_details(
     payload: UpdatedBusiness,
     business_id: int,
     current_user_id: int = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> BusinessDetails:
-    return update_business_service(db, payload, business_id, current_user_id)
+    return await update_business_service(db, payload, business_id, current_user_id)
 
 
 # DELETE - User
@@ -76,15 +76,15 @@ async def update_business_details(
 async def delete_user(
     user_id: int,
     current_user_id:int=Depends(current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    return delete_user_service(db, user_id, current_user_id)
+    return await delete_user_service(db, user_id, current_user_id)
 
 # DELETE Business 
 @router.delete('/business/{business_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_business(
     business_id: int,
     current_user_id: int = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    return delete_business_service(db, business_id, current_user_id)
+    return await delete_business_service(db, business_id, current_user_id)

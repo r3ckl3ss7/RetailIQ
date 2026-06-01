@@ -8,9 +8,7 @@ from sqlalchemy import (
     DateTime,
     func,
 )
-from db.database import Base, engine, SessionLocal
-
-session = SessionLocal()
+from db.database import Base, async_engine
 
 
 class User(Base):
@@ -76,7 +74,8 @@ class Business(Base):
     owner = relationship("User", back_populates="businesses")
 
 
-def create_table():
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
+async def create_table():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
     print("Table created!")
