@@ -1,13 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from db.database import get_db
-from models.user import (
-    User as UserModel,
-    Business as BusinessModel,
-)
 from middlewares.auth import auth, current_user
-from services.auth import hash_password
+from services.user import (
+    create_business as create_business_service,
+    delete_business as delete_business_service,
+    delete_user as delete_user_service,
+    get_business_details as get_business_details_service,
+    get_user_profile as get_user_profile_service,
+    update_business as update_business_service,
+    update_profile as update_profile_service,
+)
 
 from schemas.user import (
     User as UserProfile,
@@ -25,14 +29,7 @@ def user_profile(
     _: int = Depends(auth),
     db: Session = Depends(get_db),
 ) -> UserProfile:
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    return user
+    return get_user_profile_service(db, user_id)
 
 # GET - Business
 @router.get('/{user_id}/{business_id}', response_model=BusinessDetails)
@@ -42,23 +39,7 @@ async def business_details(
     _: int = Depends(auth),
     db: Session = Depends(get_db),
 ) -> BusinessDetails:
-    business = (
-        db.query(BusinessModel).filter(BusinessModel.id == business_id).first()
-    )
-
-    if not business:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Business not found",
-        )
-
-    if business.user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to access this business",
-        )
-
-    return business
+    return get_business_details_service(db, user_id, business_id)
 
 # POST - Business
 @router.post('/business', response_model=BusinessDetails)
@@ -67,35 +48,7 @@ async def create_business(
     current_user_id: int = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> BusinessDetails:
-    try:
-        new_business = BusinessModel(
-            user_id=current_user_id,
-            name=payload.name,
-            gst_number=payload.gst_number,
-            phone=payload.phone,
-            email=payload.email,
-            address=payload.address,
-            city=payload.city,
-            state=payload.state,
-            country=payload.country,
-            postal_code=payload.postal_code,
-            logo_url=payload.logo_url,
-            invoice_prefix=payload.invoice_prefix,
-            currency=payload.currency,
-            timezone=payload.timezone,
-        )
-        db.add(new_business)
-        db.commit()
-        db.refresh(new_business)
-
-        return new_business
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+    return create_business_service(db, payload, current_user_id)
 
 # PATCH - Profile
 @router.patch('/{user_id}', response_model=UserProfile)
@@ -105,55 +58,7 @@ async def update_profile(
     current_user_id: int = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> UserProfile:
-    if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to modify this profile",
-        )
-
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    try:
-        if payload.name is not None:
-            user.name = payload.name
-
-        if payload.email is not None:
-            existing = (
-                db.query(UserModel)
-                .filter(
-                    UserModel.email == payload.email,
-                    UserModel.id != user_id,
-                )
-                .first()
-            )
-            if existing:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already in use",
-                )
-            user.email = payload.email
-
-        if payload.password is not None:
-            user.password = hash_password(payload.password)
-
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-        return user
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+    return update_profile_service(db, payload, user_id, current_user_id)
 
 # PATCH - Business
 @router.patch('/business/{business_id}', response_model=BusinessDetails)
@@ -163,62 +68,7 @@ async def update_business_details(
     current_user_id: int = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> BusinessDetails:
-    business = (
-        db.query(BusinessModel)
-        .filter(BusinessModel.id == business_id)
-        .first()
-    )
-    if not business:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Business not found",
-        )
-
-    if business.user_id != current_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to modify this business",
-        )
-
-    try:
-        if payload.name is not None:
-            business.name = payload.name
-        if payload.gst_number is not None:
-            business.gst_number = payload.gst_number
-        if payload.phone is not None:
-            business.phone = payload.phone
-        if payload.email is not None:
-            business.email = payload.email
-        if payload.address is not None:
-            business.address = payload.address
-        if payload.city is not None:
-            business.city = payload.city
-        if payload.state is not None:
-            business.state = payload.state
-        if payload.country is not None:
-            business.country = payload.country
-        if payload.postal_code is not None:
-            business.postal_code = payload.postal_code
-        if payload.logo_url is not None:
-            business.logo_url = payload.logo_url
-        if payload.invoice_prefix is not None:
-            business.invoice_prefix = payload.invoice_prefix
-        if payload.currency is not None:
-            business.currency = payload.currency
-        if payload.timezone is not None:
-            business.timezone = payload.timezone
-
-        db.add(business)
-        db.commit()
-        db.refresh(business)
-
-        return business
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+    return update_business_service(db, payload, business_id, current_user_id)
 
 
 # DELETE - User
@@ -228,28 +78,7 @@ async def delete_user(
     current_user_id:int=Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to delete this user",
-        )
-    try:
-        user=db.query(UserModel).filter(UserModel.id==user_id).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )        
-        db.delete(
-            user
-        )
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+    return delete_user_service(db, user_id, current_user_id)
 
 # DELETE Business 
 @router.delete('/business/{business_id}', status_code=status.HTTP_204_NO_CONTENT)
@@ -258,25 +87,4 @@ async def delete_business(
     current_user_id: int = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    business=db.query(BusinessModel).filter(BusinessModel.id==business_id).first()
-    if not business:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Business not found",
-        )
-
-    if business.user_id != current_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to delete this business",
-        )
-
-    try:
-        db.delete(business)
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+    return delete_business_service(db, business_id, current_user_id)

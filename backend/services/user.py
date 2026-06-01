@@ -1,0 +1,242 @@
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
+from models.user import User as UserModel, Business as BusinessModel
+from schemas.user import Business as BusinessDetails, UpdatedBusiness, UpdateUserProfile
+from services.auth import hash_password
+
+
+def get_user_profile(db: Session, user_id: int) -> UserModel:
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
+
+
+def get_business_details(
+    db: Session,
+    user_id: int,
+    business_id: int,
+) -> BusinessModel:
+    business = db.query(BusinessModel).filter(BusinessModel.id == business_id).first()
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found",
+        )
+    if business.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to access this business",
+        )
+    return business
+
+
+def create_business(
+    db: Session,
+    payload: BusinessDetails,
+    current_user_id: int,
+) -> BusinessModel:
+    try:
+        new_business = BusinessModel(
+            user_id=current_user_id,
+            name=payload.name,
+            gst_number=payload.gst_number,
+            phone=payload.phone,
+            email=payload.email,
+            address=payload.address,
+            city=payload.city,
+            state=payload.state,
+            country=payload.country,
+            postal_code=payload.postal_code,
+            logo_url=payload.logo_url,
+            invoice_prefix=payload.invoice_prefix,
+            currency=payload.currency,
+            timezone=payload.timezone,
+        )
+        db.add(new_business)
+        db.commit()
+        db.refresh(new_business)
+        return new_business
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+
+
+def update_profile(
+    db: Session,
+    payload: UpdateUserProfile,
+    user_id: int,
+    current_user_id: int,
+) -> UserModel:
+    if current_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to modify this profile",
+        )
+
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    try:
+        if payload.name is not None:
+            user.name = payload.name
+
+        if payload.email is not None:
+            existing = (
+                db.query(UserModel)
+                .filter(
+                    UserModel.email == payload.email,
+                    UserModel.id != user_id,
+                )
+                .first()
+            )
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already in use",
+                )
+            user.email = payload.email
+
+        if payload.password is not None:
+            user.password = hash_password(payload.password)
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+
+
+def update_business(
+    db: Session,
+    payload: UpdatedBusiness,
+    business_id: int,
+    current_user_id: int,
+) -> BusinessModel:
+    business = db.query(BusinessModel).filter(BusinessModel.id == business_id).first()
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found",
+        )
+
+    if business.user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to modify this business",
+        )
+
+    try:
+        if payload.name is not None:
+            business.name = payload.name
+        if payload.gst_number is not None:
+            business.gst_number = payload.gst_number
+        if payload.phone is not None:
+            business.phone = payload.phone
+        if payload.email is not None:
+            business.email = payload.email
+        if payload.address is not None:
+            business.address = payload.address
+        if payload.city is not None:
+            business.city = payload.city
+        if payload.state is not None:
+            business.state = payload.state
+        if payload.country is not None:
+            business.country = payload.country
+        if payload.postal_code is not None:
+            business.postal_code = payload.postal_code
+        if payload.logo_url is not None:
+            business.logo_url = payload.logo_url
+        if payload.invoice_prefix is not None:
+            business.invoice_prefix = payload.invoice_prefix
+        if payload.currency is not None:
+            business.currency = payload.currency
+        if payload.timezone is not None:
+            business.timezone = payload.timezone
+
+        db.add(business)
+        db.commit()
+        db.refresh(business)
+        return business
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+
+
+def delete_user(
+    db: Session,
+    user_id: int,
+    current_user_id: int,
+) -> None:
+    if current_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete this user",
+        )
+    try:
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        db.delete(user)
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+
+
+def delete_business(
+    db: Session,
+    business_id: int,
+    current_user_id: int,
+) -> None:
+    business = db.query(BusinessModel).filter(BusinessModel.id == business_id).first()
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found",
+        )
+
+    if business.user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete this business",
+        )
+
+    try:
+        db.delete(business)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
