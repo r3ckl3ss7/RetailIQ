@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Optional
 
-from pydantic import BaseModel, Field, condecimal, conint
+from pydantic import BaseModel, Field, condecimal, conint, model_validator
 
 Money = condecimal(max_digits=12, decimal_places=2, ge=0)
 PositiveInt = conint(gt=0)
@@ -100,4 +100,18 @@ class InvoiceCreatePayload(BaseModel):
     total: Optional[Money] = None
     notes: Optional[str] = None
     items: Annotated[list[InvoiceItemInput], Field(min_length=1)]
+
+
+class InvoiceOCRPayload(BaseModel):
+    business_id: int
+    image_base64: Optional[str] = None
+    image_url: Optional[str] = None
+    deduct_from_stock: bool = False
+    confidence_threshold: Optional[float] = Field(default=None, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def validate_image_input(self) -> "InvoiceOCRPayload":
+        if bool(self.image_base64) == bool(self.image_url):
+            raise ValueError("Provide exactly one of image_base64 or image_url")
+        return self
 
