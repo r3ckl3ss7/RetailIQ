@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from db.database import async_engine
@@ -6,7 +7,19 @@ from models.user import create_table
 from routes.auth import router as authRouter
 from routes.invoice import router as invoiceRouter
 from routes.user import router as userRouter
+from routes.products import router as productsRouter
+from routes.analytics import router as analyticsRouter
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 @app.get('/')
@@ -29,3 +42,6 @@ async def db_health():
 app.include_router(authRouter)
 app.include_router(invoiceRouter)
 app.include_router(userRouter)
+app.include_router(productsRouter)
+app.include_router(analyticsRouter)
+

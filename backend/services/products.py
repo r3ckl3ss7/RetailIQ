@@ -147,5 +147,5 @@ async def delete_product(
 	if not product:
 		raise HTTPException(status_code=404, detail="Product not found")
 	await _get_business_for_user(db, product.business_id, current_user_id)
-	db.delete(product)
+	await db.delete(product)
 	await db.commit()

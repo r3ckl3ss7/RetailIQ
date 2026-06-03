@@ -31,7 +31,6 @@ class User(Base):
     )
 
 
-# Align Business model with backend/models/invoice.py while keeping ownership
 class Business(Base):
     __tablename__ = "businesses"
 
@@ -72,6 +71,11 @@ class Business(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="businesses")
+    products = relationship(
+        "Product",
+        back_populates="business",
+        cascade="all, delete",
+    )
 
 
 async def create_table():

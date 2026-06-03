@@ -99,3 +99,4 @@ class InvoiceItem(Base):
     product_id = Column(Integer, ForeignKey('products.id', ondelete='SET NULL'), nullable=True, index=True)
     quantity = Column(Integer, nullable=False, default=1)
     invoice = relationship('Invoice', back_populates='items')
+    product = relationship('Product')

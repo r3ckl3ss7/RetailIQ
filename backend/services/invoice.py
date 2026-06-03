@@ -3,7 +3,7 @@ import os
 import re
 from decimal import Decimal, ROUND_HALF_UP
 
-import requests
+import httpx
 
 from fastapi import HTTPException, status
 from sqlalchemy import or_, select
@@ -250,11 +250,15 @@ async def create_invoice(
 async def get_invoice_by_id(
 	db: AsyncSession,
 	invoice_id: int,
+	current_user_id: int,
 ) -> Invoice:
 	try:
 		result = await db.execute(
 			select(Invoice)
-			.options(selectinload(Invoice.items))
+			.options(
+				selectinload(Invoice.items).selectinload(InvoiceItem.product),
+				selectinload(Invoice.customer)
+			)
 			.where(Invoice.id == invoice_id)
 		)
 		invoice = result.scalar_one_or_none()
@@ -263,6 +267,17 @@ async def get_invoice_by_id(
 				status_code=status.HTTP_404_NOT_FOUND,
 				detail="Invalid invoice id",
 			)
+
+		business_result = await db.execute(
+			select(Business).where(Business.id == invoice.business_id)
+		)
+		business = business_result.scalar_one_or_none()
+		if not business or business.user_id != current_user_id:
+			raise HTTPException(
+				status_code=status.HTTP_403_FORBIDDEN,
+				detail="Access Forbidden | Business does not belong to logged in user!",
+			)
+
 		return invoice
 	except HTTPException:
 		raise
@@ -343,15 +358,10 @@ async def update_invoice(
 		)
 
 	update_data = payload.model_dump(exclude_unset=True)
-	allowed_fields = {"status", "payment_id", "notes"}
-	invalid_fields = set(update_data.keys()) - allowed_fields
-	if invalid_fields:
-		raise HTTPException(
-			status_code=status.HTTP_400_BAD_REQUEST,
-			detail="Only status, payment_id, and notes can be updated",
-		)
 
 	for key, value in update_data.items():
+		if key == "status" and value is not None:
+			value = InvoiceStatus[value]
 		setattr(invoice, key, value)
 
 	await db.commit()
@@ -504,8 +514,9 @@ async def create_invoice_ocr(
 			]
 		}
 
-		response = requests.post(OCR_INVOKE_URL, headers=headers, json=ocr_payload, timeout=30)
-		if not response.ok:
+		async with httpx.AsyncClient() as client:
+			response = await client.post(OCR_INVOKE_URL, headers=headers, json=ocr_payload, timeout=30)
+		if not response.is_success:
 			raise HTTPException(
 				status_code=status.HTTP_502_BAD_GATEWAY,
 				detail=f"OCR request failed: {response.status_code}",
@@ -520,13 +531,16 @@ async def create_invoice_ocr(
 			)
 
 		confidences = [conf for _, conf in ocr_lines if conf is not None]
-		avg_conf = sum(confidences) / len(confidences) if confidences else 0
-		threshold = payload.confidence_threshold or OCR_CONFIDENCE_THRESHOLD
-		if avg_conf < threshold:
-			raise HTTPException(
-				status_code=status.HTTP_400_BAD_REQUEST,
-				detail="OCR confidence below threshold",
-			)
+		if confidences:
+			avg_conf = sum(confidences) / len(confidences)
+			threshold = payload.confidence_threshold or OCR_CONFIDENCE_THRESHOLD
+			if avg_conf < threshold:
+				raise HTTPException(
+					status_code=status.HTTP_400_BAD_REQUEST,
+					detail="OCR confidence below threshold",
+				)
+		else:
+			avg_conf = None
 
 		text_lines = [line for line, _ in ocr_lines]
 		items = _parse_ocr_items(text_lines)
@@ -601,6 +615,7 @@ async def create_invoice_ocr(
 				"unknown_items": unknown_items,
 			},
 			ensure_ascii=True,
+			default=str,
 		)
 
 		await db.commit()
@@ -615,3 +630,35 @@ async def create_invoice_ocr(
 			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 			detail=str(exc),
 		) from exc
+
+
+async def list_invoices(
+	db: AsyncSession,
+	business_id: int,
+	current_user_id: int,
+) -> list[Invoice]:
+	business_result = await db.execute(
+		select(Business).where(Business.id == business_id)
+	)
+	business = business_result.scalar_one_or_none()
+	if not business:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Business does not exist",
+		)
+	if current_user_id != business.user_id:
+		raise HTTPException(
+			status_code=status.HTTP_403_FORBIDDEN,
+			detail="Access Forbidden | Business does not belong to logged in user!",
+		)
+
+	result = await db.execute(
+		select(Invoice)
+		.options(
+			selectinload(Invoice.items).selectinload(InvoiceItem.product),
+			selectinload(Invoice.customer)
+		)
+		.where(Invoice.business_id == business_id)
+		.order_by(Invoice.created_at.desc())
+	)
+	return list(result.scalars().all())

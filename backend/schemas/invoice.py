@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Optional
+from decimal import Decimal
 
 from pydantic import BaseModel, Field, condecimal, conint, model_validator
 
@@ -21,9 +22,23 @@ class InvoiceSource(str, Enum):
     OCR = 'OCR'
 
 
+class ProductShort(BaseModel):
+    id: int
+    name: str
+    selling_price: Decimal
+
+    class Config:
+        from_attributes = True
+
+
 class InvoiceItemBase(BaseModel):
-    product_id: int
+    product_id: Optional[int] = None
     quantity: PositiveInt
+    product: Optional[ProductShort] = None
+
+    class Config:
+        from_attributes = True
+
 
 
 class InvoiceBase(BaseModel):
@@ -44,21 +59,25 @@ class InvoiceCreate(InvoiceBase):
 
 
 class InvoiceUpdate(BaseModel):
-    customer_id: Optional[int] = None
     payment_id: Optional[int] = None
     status: Optional[InvoiceStatus] = None
-    source: Optional[InvoiceSource] = None
-    subtotal: Optional[Money] = None
-    tax: Optional[Money] = None
-    discount: Optional[Money] = None
-    total: Optional[Money] = None
     notes: Optional[str] = None
-    items: Optional[list[InvoiceItemBase]] = None
+
+
+class CustomerOut(BaseModel):
+    id: int
+    name: str
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class InvoiceResponse(InvoiceBase):
     id: int
     items: list[InvoiceItemBase]
+    customer: Optional[CustomerOut] = None
     created_at: datetime
     updated_at: datetime
 

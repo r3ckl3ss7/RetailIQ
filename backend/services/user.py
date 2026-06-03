@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from models.user import User as UserModel, Business as BusinessModel
 from schemas.user import Business as BusinessDetails, UpdatedBusiness, UpdateUserProfile
@@ -8,7 +9,11 @@ from services.auth import hash_password
 
 
 async def get_user_profile(db: AsyncSession, user_id: int) -> UserModel:
-    result = await db.execute(select(UserModel).where(UserModel.id == user_id))
+    result = await db.execute(
+        select(UserModel)
+        .options(selectinload(UserModel.businesses))
+        .where(UserModel.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
@@ -153,32 +158,9 @@ async def update_business(
         )
 
     try:
-        if payload.name is not None:
-            business.name = payload.name
-        if payload.gst_number is not None:
-            business.gst_number = payload.gst_number
-        if payload.phone is not None:
-            business.phone = payload.phone
-        if payload.email is not None:
-            business.email = payload.email
-        if payload.address is not None:
-            business.address = payload.address
-        if payload.city is not None:
-            business.city = payload.city
-        if payload.state is not None:
-            business.state = payload.state
-        if payload.country is not None:
-            business.country = payload.country
-        if payload.postal_code is not None:
-            business.postal_code = payload.postal_code
-        if payload.logo_url is not None:
-            business.logo_url = payload.logo_url
-        if payload.invoice_prefix is not None:
-            business.invoice_prefix = payload.invoice_prefix
-        if payload.currency is not None:
-            business.currency = payload.currency
-        if payload.timezone is not None:
-            business.timezone = payload.timezone
+        update_data = payload.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(business, key, value)
 
         db.add(business)
         await db.commit()
@@ -210,7 +192,7 @@ async def delete_user(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
-        db.delete(user)
+        await db.delete(user)
         await db.commit()
     except HTTPException:
         raise
@@ -244,7 +226,7 @@ async def delete_business(
         )
 
     try:
-        db.delete(business)
+        await db.delete(business)
         await db.commit()
     except Exception as exc:
         await db.rollback()

@@ -2,14 +2,6 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
 
-class User(BaseModel):
-    model_config = {"from_attributes": True}
-
-    name: str
-    email: EmailStr
-    created_at: datetime
-
-
 class Business(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -28,6 +20,16 @@ class Business(BaseModel):
     currency: str | None = None
     timezone: str | None = None
     created_at: datetime | None = None
+
+
+class User(BaseModel):
+    model_config = {"from_attributes": True}
+
+    name: str
+    email: EmailStr
+    created_at: datetime
+    businesses: list[Business] = []
+
 
 
 class UpdatedBusiness(BaseModel):

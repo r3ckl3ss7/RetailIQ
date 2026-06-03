@@ -34,4 +34,10 @@ async def current_user(
         raw_token = raw_token[6:].lstrip(" ")
 
     token_data = verify_token(raw_token)
-    return token_data.get("user_id")
+    user_id = token_data.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing user_id claim",
+        )
+    return user_id
