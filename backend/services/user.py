@@ -1,4 +1,4 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status,Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -228,6 +228,8 @@ async def delete_business(
     try:
         await db.delete(business)
         await db.commit()
+        return Response(content="Business information deleted successfully",
+                        status_code=200)
     except Exception as exc:
         await db.rollback()
         raise HTTPException(
