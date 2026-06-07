@@ -328,7 +328,8 @@ async def profit_margins(
                 InvoiceItem.quantity * (Product.selling_price - Product.original_price)
             ).label("total_profit"),
         )
-        .join(InvoiceItem, InvoiceItem.product_id == Product.id)
+        .select_from(InvoiceItem)
+        .join(Product, InvoiceItem.product_id == Product.id)
         .join(Invoice, Invoice.id == InvoiceItem.invoice_id)
         .where(
             Invoice.business_id == business_id,
