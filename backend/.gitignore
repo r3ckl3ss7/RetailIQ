@@ -2,3 +2,4 @@
 /renv
 __pycache__/
 *.py[cod]
+seed_db.py

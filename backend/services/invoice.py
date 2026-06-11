@@ -23,6 +23,8 @@ from schemas.invoice import (
 
 MONEY_QUANT = Decimal("0.01")
 OCR_INVOKE_URL = os.getenv("PADDLE_OCR_URL")
+if OCR_INVOKE_URL:
+	OCR_INVOKE_URL = OCR_INVOKE_URL.strip('"\'')
 OCR_CONFIDENCE_THRESHOLD = 0.6
 
 
@@ -455,6 +457,16 @@ def _extract_ocr_lines(response_json: dict) -> list[tuple[str, float | None]]:
 	if isinstance(data, list):
 		for entry in data:
 			if isinstance(entry, dict):
+				text_detections = entry.get("text_detections")
+				if isinstance(text_detections, list):
+					for detection in text_detections:
+						if isinstance(detection, dict):
+							text = detection.get("text")
+							confidence = detection.get("confidence")
+							if text and str(text).strip():
+								lines.append((str(text).strip(), float(confidence) if confidence is not None else None))
+					continue
+
 				text = (
 					entry.get("text")
 					or entry.get("label")
