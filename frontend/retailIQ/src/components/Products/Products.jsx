@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchProducts, postProduct, updateProduct, deleteProduct } from "../../features/product/productThunk";
 import { validateField, validateForm, hasErrors, PRODUCT_ADD_RULES, PRODUCT_EDIT_RULES } from "../../utils/formValidation";
-import Navbar from "../Navbar";
+
 const Products = () => {
   const dispatch = useDispatch();
   const location = useLocation();
@@ -196,7 +196,6 @@ const Products = () => {
   const activeFormType = showAddForm ? "add" : "edit";
   return (
     <div className="dashboard-page">
-      <Navbar />
       <main className="dashboard-main">
         {!selectedBusinessId ? (
           <div className="empty-state-card">

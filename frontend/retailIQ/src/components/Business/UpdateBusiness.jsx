@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetch_business, update_business } from "../../features/business/businessThunk";
 import { validateField, validateForm, hasErrors, BUSINESS_RULES } from "../../utils/formValidation";
-import Navbar from "../Navbar";
+
 const UpdateBusiness = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -100,7 +100,6 @@ const UpdateBusiness = () => {
     `${base}${touched[fieldName] && errors[fieldName] ? " invalid" : ""}`;
   return (
     <div className="dashboard-page">
-      <Navbar />
       <main className="dashboard-main">
         <div style={{ maxWidth: "800px", margin: "0 auto" }}>
           <div className="dashboard-header">

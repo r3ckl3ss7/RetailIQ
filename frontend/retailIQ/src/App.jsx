@@ -7,51 +7,77 @@ import Business  from "./components/Business/Business";
 import Show_Business from "./components/Business/Show_Business";
 import UpdateBusiness from "./components/Business/UpdateBusiness";
 import Products from "./components/Products/Products";
+import Layout from "./components/Layout";
+import Invoices from "./components/Invoice/Invoices";
+
 const App = () => {
   return (
     <Routes>
-      {}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      {}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Layout>
+              <Dashboard />
+            </Layout>
           </ProtectedRoute>
         }
       />
-      <Route path="/business" element={
-        <ProtectedRoute>
-          <Business />
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/business"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Business />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/business/edit"
         element={
           <ProtectedRoute>
-            <UpdateBusiness />
+            <Layout>
+              <UpdateBusiness />
+            </Layout>
           </ProtectedRoute>
         }
       />
-      <Route path="/show" element={
-        <ProtectedRoute>
-          <Show_Business/>
-        </ProtectedRoute>
-      }>
-      </Route>
+      <Route
+        path="/show"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Show_Business/>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/products"
         element={
           <ProtectedRoute>
-            <Products />
+            <Layout>
+              <Products />
+            </Layout>
           </ProtectedRoute>
         }
       />
-      {}
+      <Route
+        path="/invoices"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Invoices />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
+
 export default App;

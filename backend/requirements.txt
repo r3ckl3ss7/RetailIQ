@@ -13,3 +13,8 @@ pydantic[email]
 passlib[bcrypt]
 bcrypt==4.0.1
 
+langchain
+langchain-ollama
+langchain-community
+
+

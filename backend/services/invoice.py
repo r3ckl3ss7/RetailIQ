@@ -66,7 +66,7 @@ async def _resolve_customer(
 		.where(Customer.business_id == business_id)
 		.where(or_(*filters))
 	)
-	existing = result.scalar_one_or_none()
+	existing = result.scalars().first()
 	if existing:
 		return existing.id
 
@@ -116,7 +116,7 @@ async def _resolve_product(
 	if barcode:
 		filters.append(Product.barcode == barcode)
 	result = await db.execute(query.where(or_(*filters)))
-	product = result.scalar_one_or_none()
+	product = result.scalars().first()
 	if not product:
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
@@ -193,8 +193,10 @@ async def create_invoice(
 			resolved_items.append((product, item.quantity))
 
 		subtotal, tax, discount, total = _calculate_totals(payload, resolved_items)
-		model_status = InvoiceStatus[payload.status.value]
-		model_source = InvoiceSource[payload.source.value]
+		status_str = payload.status.value if hasattr(payload.status, "value") else payload.status
+		source_str = payload.source.value if hasattr(payload.source, "value") else payload.source
+		model_status = InvoiceStatus[status_str]
+		model_source = InvoiceSource[source_str]
 
 		invoice = Invoice(
 			business_id=payload.business_id,
@@ -228,7 +230,15 @@ async def create_invoice(
 				product.stock -= quantity
 
 		await db.commit()
-		await db.refresh(invoice)
+		result = await db.execute(
+			select(Invoice)
+			.options(
+				selectinload(Invoice.items).selectinload(InvoiceItem.product),
+				selectinload(Invoice.customer)
+			)
+			.where(Invoice.id == invoice.id)
+		)
+		invoice = result.scalar_one()
 
 		status_code = (
 			status.HTTP_202_ACCEPTED
@@ -337,36 +347,85 @@ async def update_invoice(
 	payload: InvoiceUpdate,
 	current_user_id: int,
 ) -> Invoice:
-	invoice_result = await db.execute(
-		select(Invoice).where(Invoice.id == invoice_id)
-	)
-	invoice = invoice_result.scalar_one_or_none()
-	if not invoice:
-		raise HTTPException(
-			status_code=status.HTTP_404_NOT_FOUND,
-			detail="Invalid invoice id",
+	try:
+		invoice_result = await db.execute(
+			select(Invoice)
+			.options(
+				selectinload(Invoice.items).selectinload(InvoiceItem.product),
+				selectinload(Invoice.customer)
+			)
+			.where(Invoice.id == invoice_id)
 		)
+		invoice = invoice_result.scalar_one_or_none()
+		if not invoice:
+			raise HTTPException(
+				status_code=status.HTTP_404_NOT_FOUND,
+				detail="Invalid invoice id",
+			)
 
-	business_result = await db.execute(
-		select(Business).where(Business.id == invoice.business_id)
-	)
-	business = business_result.scalar_one_or_none()
-	if not business or business.user_id != current_user_id:
-		raise HTTPException(
-			status_code=status.HTTP_403_FORBIDDEN,
-			detail="Access Forbidden | Business does not belong to logged in user!",
+		business_result = await db.execute(
+			select(Business).where(Business.id == invoice.business_id)
 		)
+		business = business_result.scalar_one_or_none()
+		if not business or business.user_id != current_user_id:
+			raise HTTPException(
+				status_code=status.HTTP_403_FORBIDDEN,
+				detail="Access Forbidden | Business does not belong to logged in user!",
+			)
 
-	update_data = payload.model_dump(exclude_unset=True)
+		update_data = payload.model_dump(exclude_unset=True)
 
-	for key, value in update_data.items():
-		if key == "status" and value is not None:
-			value = InvoiceStatus[value]
-		setattr(invoice, key, value)
+		old_status = invoice.status
+		new_status = old_status
+		if "status" in update_data and update_data["status"] is not None:
+			status_val = update_data["status"].value if hasattr(update_data["status"], "value") else update_data["status"]
+			new_status = InvoiceStatus[status_val]
 
-	await db.commit()
-	await db.refresh(invoice)
-	return invoice
+		if old_status != new_status:
+			stock_was_deducted_before = (old_status == InvoiceStatus.PAID) or (
+				old_status == InvoiceStatus.PENDING and invoice.source == InvoiceSource.OCR
+			)
+			stock_should_be_deducted_now = (new_status == InvoiceStatus.PAID)
+
+			if stock_should_be_deducted_now and not stock_was_deducted_before:
+				for item in invoice.items:
+					if item.product:
+						if item.product.stock < item.quantity:
+							raise HTTPException(
+								status_code=status.HTTP_400_BAD_REQUEST,
+								detail=f"Insufficient stock for product '{item.product.name}' (ID: {item.product.id})",
+							)
+						item.product.stock -= item.quantity
+			elif not stock_should_be_deducted_now and stock_was_deducted_before:
+				for item in invoice.items:
+					if item.product:
+						item.product.stock += item.quantity
+
+		for key, value in update_data.items():
+			if key == "status":
+				value = new_status
+			setattr(invoice, key, value)
+
+		await db.commit()
+		result = await db.execute(
+			select(Invoice)
+			.options(
+				selectinload(Invoice.items).selectinload(InvoiceItem.product),
+				selectinload(Invoice.customer)
+			)
+			.where(Invoice.id == invoice_id)
+		)
+		invoice = result.scalar_one()
+		return invoice
+	except HTTPException:
+		await db.rollback()
+		raise
+	except Exception as exc:
+		await db.rollback()
+		raise HTTPException(
+			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			detail=str(exc),
+		) from exc
 
 
 def _parse_money(value: str | None) -> Decimal | None:
@@ -460,7 +519,7 @@ async def _match_product_by_name(db: AsyncSession, business_id: int, name: str) 
 			Product.name.ilike(f"%{clean_name}%"),
 		)
 	)
-	return result.scalar_one_or_none()
+	return result.scalars().first()
 
 
 async def create_invoice_ocr(
@@ -619,7 +678,15 @@ async def create_invoice_ocr(
 		)
 
 		await db.commit()
-		await db.refresh(invoice)
+		result = await db.execute(
+			select(Invoice)
+			.options(
+				selectinload(Invoice.items).selectinload(InvoiceItem.product),
+				selectinload(Invoice.customer)
+			)
+			.where(Invoice.id == invoice.id)
+		)
+		invoice = result.scalar_one()
 		return invoice
 	except HTTPException:
 		await db.rollback()

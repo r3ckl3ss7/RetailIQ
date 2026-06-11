@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetch_business, delete_business } from "../../features/business/businessThunk";
-import Navbar from "../Navbar";
+
 const Show_Business = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -23,7 +23,6 @@ const Show_Business = () => {
   const business = businessDetails || businesses.find(b => b.id === selectedBusinessId);
   return (
     <div className="dashboard-page">
-      <Navbar />
       <main className="dashboard-main">
         <div style={{ maxWidth: "800px", margin: "0 auto" }}>
           <div className="dashboard-header flex-between">
