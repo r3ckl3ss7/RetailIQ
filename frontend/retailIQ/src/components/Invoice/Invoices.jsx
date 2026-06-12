@@ -16,13 +16,11 @@ const Invoices = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // Redux Selectors
   const { selectedBusinessId, businesses } = useSelector((state) => state.business);
   const { data: invoices, customers, loading, error } = useSelector((state) => state.invoices);
   const { data: products } = useSelector((state) => state.products);
   const selectedBusiness = businesses.find((b) => b.id === selectedBusinessId);
 
-  // Component States
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState(null);
@@ -31,7 +29,6 @@ const Invoices = () => {
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState("");
 
-  // Invoice Form State
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [formData, setFormData] = useState({
     customerId: "",
@@ -43,16 +40,15 @@ const Invoices = () => {
     status: "PENDING",
     notes: "",
     discount: "0",
-    taxRate: "18", // GST default 18%
+    taxRate: "18",
   });
-  const [selectedItems, setSelectedItems] = useState([]); // Array of { product_id, quantity, product }
+  const [selectedItems, setSelectedItems] = useState([]);
   const [currentItem, setCurrentItem] = useState({
     product_id: "",
     quantity: "1",
   });
   const [formError, setFormError] = useState("");
 
-  // Fetch data on load/business shift
   useEffect(() => {
     if (selectedBusinessId) {
       dispatch(fetchInvoices(selectedBusinessId));
@@ -61,7 +57,6 @@ const Invoices = () => {
     }
   }, [dispatch, selectedBusinessId]);
 
-  // Clean errors when closing forms
   useEffect(() => {
     if (!showCreateForm) {
       setFormError("");
@@ -137,7 +132,6 @@ const Invoices = () => {
         );
       }
     } catch (e) {
-      // Not JSON, fallback
     }
     return (
       <p style={{ fontSize: "0.8125rem", color: "var(--slate-500)", marginTop: "4px", whiteSpace: "pre-line" }}>
@@ -146,7 +140,6 @@ const Invoices = () => {
     );
   };
 
-  // Calculations for Creation Form
   const subtotal = selectedItems.reduce((sum, item) => {
     return sum + (item.product?.selling_price || 0) * parseInt(item.quantity || 1);
   }, 0);
@@ -155,7 +148,6 @@ const Invoices = () => {
   const discountVal = parseFloat(formData.discount) || 0;
   const total = subtotal + tax - discountVal;
 
-  // Manual Invoice Items manipulation
   const handleAddItem = () => {
     if (!currentItem.product_id) {
       setFormError("Please select a product first.");
@@ -170,7 +162,6 @@ const Invoices = () => {
     const matchedProduct = products.find((p) => p.id === parseInt(currentItem.product_id));
     if (!matchedProduct) return;
 
-    // Check if item already added
     const existingIndex = selectedItems.findIndex(
       (item) => item.product_id === matchedProduct.id
     );
@@ -192,7 +183,6 @@ const Invoices = () => {
       ]);
     }
 
-    // Reset current item selections
     setCurrentItem({ product_id: "", quantity: "1" });
     setFormError("");
   };
@@ -201,7 +191,6 @@ const Invoices = () => {
     setSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
-  // Invoice Submissions
   const handleSubmitInvoice = async (e) => {
     e.preventDefault();
     setFormError("");
@@ -260,7 +249,6 @@ const Invoices = () => {
     }
   };
 
-  // OCR Upload Actions
   const handleOcrClick = () => {
     fileInputRef.current.click();
   };
@@ -269,7 +257,6 @@ const Invoices = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate type
     if (!file.type.startsWith("image/")) {
       setOcrError("Please upload an image file (PNG, JPG, JPEG).");
       return;
@@ -293,7 +280,6 @@ const Invoices = () => {
 
         if (!result.error) {
           dispatch(fetchInvoices(selectedBusinessId));
-          // Open details of extracted invoice
           setViewingInvoice(result.payload);
         } else {
           setOcrError(
@@ -306,7 +292,6 @@ const Invoices = () => {
         setOcrError("Failed to convert image. Please try another file.");
       } finally {
         setOcrLoading(false);
-        // Clear input element
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     };
@@ -342,7 +327,6 @@ const Invoices = () => {
     }
   };
 
-  // Status Badge Helper
   const getStatusBadge = (status) => {
     const s = status ? status.toUpperCase() : "PENDING";
     if (s === "PAID") return <span className="badge badge-success">Paid</span>;
@@ -352,12 +336,10 @@ const Invoices = () => {
     return <span className="badge badge-neutral">{status}</span>;
   };
 
-  // Print trigger
   const handlePrint = () => {
     window.print();
   };
 
-  // Search filtering
   const filteredInvoices = invoices.filter((inv) => {
     const customerName = inv.customer?.name?.toLowerCase() || "";
     const invId = `inv-${inv.id}`;
@@ -382,7 +364,6 @@ const Invoices = () => {
           </div>
         ) : (
           <>
-            {/* Header Area */}
             <div className="dashboard-header flex-between flex-wrap gap-4">
               <div>
                 <h1 className="dashboard-greeting">Invoices</h1>
@@ -431,7 +412,6 @@ const Invoices = () => {
               )}
             </div>
 
-            {/* Error alerts */}
             {ocrError && (
               <div className="auth-error mb-4">
                 <span>{ocrError}</span>
@@ -443,7 +423,6 @@ const Invoices = () => {
               </div>
             )}
 
-            {/* Manual Creation Form */}
             {showCreateForm && (
               <div className="auth-card mb-6" style={{ maxWidth: "none" }}>
                 <h3 className="mb-4" style={{ borderBottom: "1px solid var(--slate-200)", paddingBottom: "8px", color: "var(--slate-800)" }}>
@@ -456,7 +435,6 @@ const Invoices = () => {
                 )}
                 <form onSubmit={handleSubmitInvoice} className="standard-form">
                   <div className="grid-2">
-                    {/* Customer Selection block */}
                     <div className="form-group" style={{ borderRight: "1px solid var(--slate-100)", paddingRight: "16px" }}>
                       <div className="flex-between mb-2">
                         <label className="form-label" style={{ marginBottom: 0 }}>Customer Info *</label>
@@ -531,7 +509,6 @@ const Invoices = () => {
                       )}
                     </div>
 
-                    {/* Meta options & notes */}
                     <div className="form-group">
                       <label className="form-label">Invoice Details</label>
                       <div className="grid-2 mb-2" style={{ gap: "10px" }}>
@@ -572,7 +549,6 @@ const Invoices = () => {
                     </div>
                   </div>
 
-                  {/* Add Product Items Block */}
                   <div style={{ borderTop: "1px solid var(--slate-100)", paddingTop: "16px", marginTop: "8px" }}>
                     <h4 className="mb-4" style={{ color: "var(--slate-800)", fontWeight: 600 }}>Line Items</h4>
                     <div className="flex-gap-2 mb-4 flex-wrap">
@@ -612,7 +588,6 @@ const Invoices = () => {
                       </button>
                     </div>
 
-                    {/* Added Items table */}
                     {selectedItems.length > 0 && (
                       <div className="retail-table-container mb-4">
                         <table className="retail-table">
@@ -658,7 +633,6 @@ const Invoices = () => {
                     )}
                   </div>
 
-                  {/* Financial calculation block */}
                   <div
                     style={{
                       borderTop: "1px solid var(--slate-100)",
@@ -702,7 +676,6 @@ const Invoices = () => {
                     </div>
                   </div>
 
-                  {/* Action triggers */}
                   <div className="flex-gap-2 mt-4" style={{ justifyContent: "flex-end" }}>
                     <button
                       type="button"
@@ -725,7 +698,6 @@ const Invoices = () => {
               </div>
             )}
 
-            {/* Receipt detail view */}
             {viewingInvoice && (
               <div className="auth-card mb-6" style={{ maxWidth: "800px", margin: "0 auto", padding: "40px" }} id="printable-invoice">
                 {statusError && (
@@ -733,7 +705,6 @@ const Invoices = () => {
                     <span>{statusError}</span>
                   </div>
                 )}
-                {/* Print styling injection */}
                 <style>{`
                   @media print {
                     body * {
@@ -760,7 +731,6 @@ const Invoices = () => {
                   }
                 `}</style>
 
-                {/* Printable Invoice Header */}
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid var(--slate-100)", paddingBottom: "24px", marginBottom: "24px" }}>
                   <div>
                     <h2 style={{ fontSize: "1.75rem", fontWeight: "800", color: "var(--slate-800)", marginBottom: "4px" }}>
@@ -788,7 +758,6 @@ const Invoices = () => {
                   </div>
                 </div>
 
-                {/* Billing details block */}
                 <div className="grid-2 mb-6" style={{ gap: "24px" }}>
                   <div>
                     <span className="form-label" style={{ color: "var(--slate-400)", fontSize: "0.75rem", textTransform: "uppercase" }}>
@@ -817,7 +786,6 @@ const Invoices = () => {
                   </div>
                 </div>
 
-                {/* Items details table */}
                 <div className="retail-table-container mb-6" style={{ border: "1px solid var(--slate-100)" }}>
                   <table className="retail-table">
                     <thead>
@@ -845,7 +813,6 @@ const Invoices = () => {
                   </table>
                 </div>
 
-                {/* Printable Invoice Footer details */}
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "24px" }}>
                   <div style={{ flex: 1, minWidth: "200px" }}>
                     {viewingInvoice.notes && (
@@ -879,7 +846,6 @@ const Invoices = () => {
                   </div>
                 </div>
 
-                {/* Print control actions */}
                 <div className="flex-gap-2 mt-6 no-print" style={{ justifyContent: "flex-end", borderTop: "1px solid var(--slate-100)", paddingTop: "16px" }}>
                   {(viewingInvoice.status === "PENDING" || viewingInvoice.status === "DRAFT") && (
                     <>
@@ -945,10 +911,8 @@ const Invoices = () => {
               </div>
             )}
 
-            {/* List Grid View */}
             {!showCreateForm && !viewingInvoice && (
               <>
-                {/* Search query field */}
                 <div style={{ display: "flex", gap: "16px", marginBottom: "20px" }}>
                   <div className="input-wrapper" style={{ flex: 1 }}>
                     <svg
@@ -973,7 +937,6 @@ const Invoices = () => {
                   </div>
                 </div>
 
-                {/* Invoices table grid */}
                 <div className="retail-table-container">
                   {loading && invoices.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "40px" }}>

@@ -79,7 +79,31 @@ class Business(Base):
 
 
 async def create_table():
+    from models.products import Product
+    from models.invoice import Customer, CustomerAddress, Payment, Invoice, InvoiceItem
+    from models.ai import ChatMessage
+    from services.ai import setup_database_rls
+    from sqlalchemy import text
+
     async with async_engine.begin() as conn:
+        await conn.execute(text("""
+            DO $$
+            DECLARE
+                pol record;
+            BEGIN
+                FOR pol IN 
+                    SELECT policyname, tablename 
+                    FROM pg_policies 
+                    WHERE schemaname = 'public'
+                LOOP
+                    EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(pol.policyname) || ' ON ' || quote_ident(pol.tablename);
+                END LOOP;
+            END
+            $$;
+        """))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(setup_database_rls)
     print("Table created!")
+
+

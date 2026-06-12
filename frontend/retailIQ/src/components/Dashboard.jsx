@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetch_user_businesses } from "../features/business/businessThunk";
 import api from "../services/api";
+import Chatbot from "./Chatbot/Chatbot";
 const CHART_PADDING = { top: 20, right: 20, bottom: 40, left: 64 };
 function shortCurrency(v) {
   if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
@@ -470,6 +471,7 @@ const Dashboard = () => {
                       <span className="stat-value">{metrics.totalInvoices}</span>
                       <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", marginTop: "6px", fontWeight: 500 }}>
                         Invoices issued
+                        <Chatbot />
                       </span>
                     </div>
                   </div>

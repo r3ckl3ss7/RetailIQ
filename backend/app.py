@@ -9,6 +9,7 @@ from routes.invoice import router as invoiceRouter
 from routes.user import router as userRouter
 from routes.products import router as productsRouter
 from routes.analytics import router as analyticsRouter
+from routes.ai import router as aiRouter
 
 app = FastAPI()
 
@@ -44,4 +45,6 @@ app.include_router(invoiceRouter)
 app.include_router(userRouter)
 app.include_router(productsRouter)
 app.include_router(analyticsRouter)
+app.include_router(aiRouter)
+
 
