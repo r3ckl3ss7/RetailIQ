@@ -82,6 +82,7 @@ async def create_table():
     from models.products import Product
     from models.invoice import Customer, CustomerAddress, Payment, Invoice, InvoiceItem
     from models.ai import ChatMessage
+    from models.auth import Auth
     from services.ai import setup_database_rls
     from sqlalchemy import text
 

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_async_db
-from schemas.auth import LoginModel, RegisterModel
-from services.auth import login_user, logout_user, register_user
+from schemas.auth import LoginModel, RegisterModel, RefreshTokenModel
+from services.auth import login_user, logout_user, register_user, refresh_access_token
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -27,6 +27,17 @@ async def login(
     return await login_user(db, payload)
 
 
+@router.post("/refresh")
+async def refresh(
+    payload: RefreshTokenModel,
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+):
+    return await refresh_access_token(db, payload)
+
+
 @router.post('/logout')
-def logout():
-    return logout_user()
+async def logout(
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+    payload: RefreshTokenModel | None = None,
+):
+    return await logout_user(db, payload)

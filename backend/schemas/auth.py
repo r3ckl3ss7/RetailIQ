@@ -12,3 +12,8 @@ class RegisterModel(BaseModel):
 class LoginModel(BaseModel):
     email: EmailStr
     password: str
+
+
+class RefreshTokenModel(BaseModel):
+    refresh_token: str
+
