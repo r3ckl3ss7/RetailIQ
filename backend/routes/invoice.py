@@ -8,14 +8,12 @@ from models.user import Business
 from schemas.invoice import (
     InvoiceCreatePayload,
     InvoiceMetadata,
-    InvoiceOCRPayload,
     InvoiceResponse,
     InvoiceUpdate,
     CustomerOut,
 )
 from services.invoice import (
     create_invoice,
-    create_invoice_ocr as create_invoice_ocr_service,
     get_invoice_by_id,
     get_invoice_metadata,
     update_invoice as update_invoice_service,
@@ -86,13 +84,6 @@ async def create_invoice_route(
         response.status_code = status.HTTP_202_ACCEPTED
     return invoice
 
-@router.post('/ocr/',response_model=InvoiceResponse)
-async def create_invoice_ocr(
-    payload: InvoiceOCRPayload,
-    current_user_id: int = Depends(current_user),
-    db: AsyncSession = Depends(get_async_db)
-)->InvoiceResponse:
-    return await create_invoice_ocr_service(payload, current_user_id, db)
 
 @router.patch('/{invoice_id}', response_model=InvoiceResponse)
 async def update_invoice(

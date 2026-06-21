@@ -33,7 +33,6 @@ class PaymentMethod(enum.Enum):
 
 class InvoiceSource(enum.Enum):
     ONLINE = 'ONLINE'
-    OCR = 'OCR'
 
 
 class CustomerAddress(Base):

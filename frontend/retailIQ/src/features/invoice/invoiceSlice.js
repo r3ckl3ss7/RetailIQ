@@ -5,7 +5,6 @@ import {
     fetchInvoiceById,
     fetchCustomers,
     createInvoice,
-    createInvoiceOCR,
     updateInvoice,
 } from "./invoiceThunk";
 const initialState = {
@@ -98,20 +97,7 @@ const invoiceSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
-            .addCase(createInvoiceOCR.pending, (state) => {
-                state.loading = true;
-                state.error = null;
-            })
-            .addCase(createInvoiceOCR.fulfilled, (state, action) => {
-                state.loading = false;
-                state.data.unshift(action.payload);
-                state.selectedInvoice = action.payload;
-                state.error = null;
-            })
-            .addCase(createInvoiceOCR.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
+
             .addCase(updateInvoice.pending, (state) => {
                 state.loading = true;
                 state.error = null;

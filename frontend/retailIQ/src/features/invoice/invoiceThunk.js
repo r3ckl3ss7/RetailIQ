@@ -61,17 +61,6 @@ export const createInvoice = createAsyncThunk(
         }
     }
 );
-export const createInvoiceOCR = createAsyncThunk(
-    "invoices/createInvoiceOCR",
-    async (data, { rejectWithValue }) => {
-        try {
-            const response = await api.post("/invoice/ocr/", data);
-            return response.data;
-        } catch (err) {
-            return rejectWithValue(err.response?.data || { error: err.message });
-        }
-    }
-);
 export const updateInvoice = createAsyncThunk(
     "invoices/updateInvoice",
     async ({ invoiceId, data }, { rejectWithValue }) => {
