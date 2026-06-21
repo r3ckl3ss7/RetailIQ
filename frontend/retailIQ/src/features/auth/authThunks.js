@@ -1,5 +1,6 @@
 import api from "../../services/api";
 import { loginStart, loginSuccess, loginFailure, logout } from "./authSlice";
+
 export const loginUser = (email, password) => async (dispatch) => {
   dispatch(loginStart());
   try {
@@ -14,6 +15,7 @@ export const loginUser = (email, password) => async (dispatch) => {
     dispatch(loginFailure(message));
   }
 };
+
 export const registerUser = (name, email, password) => async (dispatch) => {
   dispatch(loginStart());
   try {
@@ -27,7 +29,13 @@ export const registerUser = (name, email, password) => async (dispatch) => {
     return { success: false };
   }
 };
-export const logoutUser = () => (dispatch) => {
+
+export const logoutUser = () => async (dispatch) => {
+  try {
+    await api.post("/auth/logout");
+  } catch (err) {
+    console.error("Backend logout failed", err);
+  }
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   dispatch(logout());

@@ -1,21 +1,23 @@
 import os
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, Response, status
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user import User as UserModel
 from models.auth import Auth as AuthModel
-from schemas.auth import LoginModel, RegisterModel, RefreshTokenModel
+from schemas.auth import LoginModel, RegisterModel
 from middlewares.auth import refresh_token, access_token, verify_token
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
     os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24)
 )
+REFRESH_TOKEN_TTL = int(os.getenv('REFRESH_TOKEN_TTL', 7 * 24 * 60))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -26,7 +28,6 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
-
 
 
 async def register_user(db: AsyncSession, payload: RegisterModel):
@@ -52,9 +53,10 @@ async def register_user(db: AsyncSession, payload: RegisterModel):
     await db.refresh(user)
     
     token = refresh_token(user.id)
+    hashed_token = hashlib.sha256(token.encode()).hexdigest()
     tkn = AuthModel(
         user_id=user.id,
-        token=token,
+        token=hashed_token,
     )
     db.add(tkn)
     await db.commit()
@@ -67,7 +69,7 @@ async def register_user(db: AsyncSession, payload: RegisterModel):
     }
 
 
-async def login_user(db: AsyncSession, payload: LoginModel):
+async def login_user(db: AsyncSession, payload: LoginModel, response: Response):
     result = await db.execute(
         select(UserModel).where(UserModel.email == payload.email)
     )
@@ -92,17 +94,28 @@ async def login_user(db: AsyncSession, payload: LoginModel):
     accessToken = access_token(info)
     refreshToken = refresh_token(user.id)
     
-    # Store refresh token in database
+    # Store SHA-256 hash of refresh token in database
+    hashed_token = hashlib.sha256(refreshToken.encode()).hexdigest()
     db_token = AuthModel(
         user_id=user.id,
-        token=refreshToken
+        token=hashed_token
     )
     db.add(db_token)
     await db.commit()
 
+    # Set HTTP-only, secure, samesite cookie on /auth path
+    response.set_cookie(
+        key="refresh_token",
+        value=refreshToken,
+        httponly=True,
+        secure=False,  # Set to False to support localhost HTTP development
+        samesite="lax",
+        max_age=REFRESH_TOKEN_TTL * 60,
+        path="/auth",
+    )
+
     return {
         "access_token": accessToken,
-        "refresh_token": refreshToken,
         "token_type": "bearer",
         "user": {
             "id": user.id,
@@ -112,9 +125,17 @@ async def login_user(db: AsyncSession, payload: LoginModel):
     }
 
 
-async def refresh_access_token(db: AsyncSession, payload: RefreshTokenModel):
+async def refresh_access_token(db: AsyncSession, request: Request, response: Response):
+    # Extract refresh token from cookies
+    refreshToken = request.cookies.get("refresh_token")
+    if not refreshToken:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token missing",
+        )
+
     # Verify signature and expiration of the refresh token
-    token_data = verify_token(payload.refresh_token)
+    token_data = verify_token(refreshToken)
     user_id = token_data.get("user_id")
     if not user_id:
         raise HTTPException(
@@ -122,11 +143,12 @@ async def refresh_access_token(db: AsyncSession, payload: RefreshTokenModel):
             detail="Invalid refresh token structure",
         )
 
-    # Verify presence in database
+    # Verify presence of hashed refresh token in database
+    hashed_token = hashlib.sha256(refreshToken.encode()).hexdigest()
     result = await db.execute(
         select(AuthModel).where(
             AuthModel.user_id == user_id,
-            AuthModel.token == payload.refresh_token
+            AuthModel.token == hashed_token
         )
     )
     db_token = result.scalar_one_or_none()
@@ -158,32 +180,49 @@ async def refresh_access_token(db: AsyncSession, payload: RefreshTokenModel):
     }
     new_access_token = access_token(info)
     
-    # Rotate refresh token: generate new one and delete the old one
+    # Rotate refresh token: generate new one, hash it, delete old, save new
     new_refresh_token = refresh_token(user.id)
+    new_hashed_token = hashlib.sha256(new_refresh_token.encode()).hexdigest()
+    
     await db.delete(db_token)
     
-    # Save the new refresh token to DB
     new_db_token = AuthModel(
         user_id=user.id,
-        token=new_refresh_token
+        token=new_hashed_token
     )
     db.add(new_db_token)
     await db.commit()
 
+    # Set rotated refresh token in cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=False,  # Set to False to support localhost HTTP development
+        samesite="lax",
+        max_age=REFRESH_TOKEN_TTL * 60,
+        path="/auth",
+    )
+
     return {
         "access_token": new_access_token,
-        "refresh_token": new_refresh_token,
         "token_type": "bearer",
     }
 
 
-async def logout_user(db: AsyncSession, payload: RefreshTokenModel | None = None):
-    if payload and payload.refresh_token:
+async def logout_user(db: AsyncSession, request: Request, response: Response):
+    refreshToken = request.cookies.get("refresh_token")
+    if refreshToken:
+        hashed_token = hashlib.sha256(refreshToken.encode()).hexdigest()
         result = await db.execute(
-            select(AuthModel).where(AuthModel.token == payload.refresh_token)
+            select(AuthModel).where(AuthModel.token == hashed_token)
         )
         db_token = result.scalar_one_or_none()
         if db_token:
             await db.delete(db_token)
             await db.commit()
+            
+    # Clear the refresh token cookie
+    response.delete_cookie("refresh_token", path="/auth")
+    
     return {"Message": "Logged out successfully"}
