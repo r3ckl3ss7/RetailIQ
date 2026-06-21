@@ -119,12 +119,6 @@ const Navbar = () => {
         )}
       </div>
       <div className="nav-user">
-        <Link to="/products" className="logout-btn" style={{ textDecoration: "none", color: "var(--slate-700)" }}>
-          Products
-        </Link>
-        <Link to="/business" className="logout-btn" style={{ textDecoration: "none", color: "var(--slate-700)" }}>
-          Settings
-        </Link>
         <div className="user-avatar">
           {user?.name?.charAt(0)?.toUpperCase() || "U"}
         </div>

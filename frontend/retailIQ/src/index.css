@@ -1629,6 +1629,16 @@ body.dark {
   --slate-700: #f0f6fc;
   --slate-800: #f0f6fc;
   --slate-900: #ffffff;
+  --brand-50: #022c22;
+  --brand-100: #042f2e;
+  --brand-500: #10b981;
+  --brand-600: #059669;
+}
+
+body.dark .app-layout,
+body.dark .app-content-main,
+body.dark .dashboard-page {
+  background-color: #0d1117 !important;
 }
 
 body.dark .dashboard-nav,
@@ -1640,7 +1650,9 @@ body.dark .status-breakdown-card,
 body.dark .dashboard-list-card,
 body.dark .low-stock-card,
 body.dark .auth-card,
-body.dark .business-dropdown {
+body.dark .business-dropdown,
+body.dark .empty-state-card,
+body.dark .retail-table-container {
   background-color: #161b22 !important;
   border-color: #30363d !important;
   color: #c9d1d9 !important;
@@ -1660,13 +1672,19 @@ body.dark .dashboard-list-title,
 body.dark .item-name,
 body.dark .item-value,
 body.dark .sidebar-user-name,
-body.dark .sidebar-brand-name {
+body.dark .sidebar-brand-name,
+body.dark .empty-state-title {
   color: #ffffff !important;
+}
+
+body.dark .empty-state-description {
+  color: #8b949e !important;
 }
 
 body.dark .form-input,
 body.dark .form-textarea,
-body.dark .form-select {
+body.dark .form-select,
+body.dark .filter-select {
   background-color: #0d1117 !important;
   border-color: #30363d !important;
   color: #ffffff !important;
@@ -1674,4 +1692,41 @@ body.dark .form-select {
 
 body.dark .area-chart-stat-value {
   color: #ffffff !important;
+}
+
+body.dark .btn-secondary,
+body.dark .logout-btn,
+body.dark .sidebar-toggle-btn {
+  background-color: #21262d !important;
+  border-color: #30363d !important;
+  color: #c9d1d9 !important;
+}
+
+body.dark .btn-secondary:hover,
+body.dark .sidebar-toggle-btn:hover {
+  background-color: #30363d !important;
+  color: #ffffff !important;
+}
+
+body.dark .logout-btn:hover {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+body.dark .action-card {
+  background-color: #161b22 !important;
+  border-color: #30363d !important;
+  color: #c9d1d9 !important;
+}
+
+body.dark .action-card:hover {
+  background-color: #21262d !important;
+  border-color: #30363d !important;
+  color: #10b981 !important;
+}
+
+body.dark .retail-table td {
+  color: #c9d1d9 !important;
+  border-bottom-color: #21262d !important;
 }
