@@ -27,6 +27,7 @@ class User(BaseModel):
 
     name: str
     email: EmailStr
+    avatar_url: str | None = None
     created_at: datetime
     businesses: list[Business] = []
 
@@ -56,3 +57,4 @@ class UpdateUserProfile(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
     password: str | None = None
+    avatar_url: str | None = None

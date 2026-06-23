@@ -33,7 +33,6 @@ const chatSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch Sessions
       .addCase(fetchSessions.pending, (state) => {
         state.error = null;
       })
@@ -44,7 +43,6 @@ const chatSlice = createSlice({
         state.error = action.payload;
       })
       
-      // Fetch Chat History
       .addCase(fetchChatHistory.pending, (state) => {
         state.fetchingHistory = true;
         state.error = null;
@@ -58,7 +56,6 @@ const chatSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Send Chat Message
       .addCase(sendChatMessage.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -67,12 +64,10 @@ const chatSlice = createSlice({
         state.loading = false;
         const responseData = action.payload;
         
-        // If the session ID changed (e.g., first message of a fresh chat)
         if (!state.sessionId && responseData.session_id) {
           state.sessionId = responseData.session_id;
         }
 
-        // Add assistant reply, filtering out duplicates
         state.messages.push({
           id: responseData.id,
           sender: responseData.sender,
@@ -83,7 +78,6 @@ const chatSlice = createSlice({
       .addCase(sendChatMessage.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        // Append error system message
         state.messages.push({
           id: Date.now(),
           sender: "assistant",
@@ -92,7 +86,6 @@ const chatSlice = createSlice({
         });
       })
 
-      // Delete Session
       .addCase(deleteSession.pending, (state) => {
         state.loading = true;
         state.error = null;

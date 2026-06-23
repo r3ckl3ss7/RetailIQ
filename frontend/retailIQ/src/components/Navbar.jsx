@@ -119,10 +119,14 @@ const Navbar = () => {
         )}
       </div>
       <div className="nav-user">
-        <div className="user-avatar">
-          {user?.name?.charAt(0)?.toUpperCase() || "U"}
+        <div className="user-avatar" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={() => navigate("/settings")}>
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} alt={user.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            user?.name?.charAt(0)?.toUpperCase() || "U"
+          )}
         </div>
-        <span className="user-name">{user?.name || "User"}</span>
+        <span className="user-name" style={{ cursor: "pointer" }} onClick={() => navigate("/settings")}>{user?.name || "User"}</span>
         <button className="logout-btn" onClick={handleLogout}>
           <svg
             width="14"

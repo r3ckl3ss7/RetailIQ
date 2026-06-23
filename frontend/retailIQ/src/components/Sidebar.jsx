@@ -81,7 +81,7 @@ const Sidebar = () => {
       items: [
         {
           name: "Settings",
-          path: "/business",
+          path: "/settings",
           icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
@@ -204,9 +204,13 @@ const Sidebar = () => {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="sidebar-user-avatar">
-            {user?.name?.charAt(0)?.toUpperCase() || "U"}
+        <div className="sidebar-user" style={{ cursor: "pointer" }} onClick={() => navigate("/settings")}>
+          <div className="sidebar-user-avatar" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              user?.name?.charAt(0)?.toUpperCase() || "U"
+            )}
           </div>
           <div className="sidebar-user-info">
             <span className="sidebar-user-name">{user?.name || "User"}</span>

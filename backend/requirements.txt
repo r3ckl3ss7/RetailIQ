@@ -8,6 +8,8 @@ psycopg2-binary
 asyncpg
 dotenv
 requests
+cloudinary
+python-multipart
 
 pydantic[email]
 passlib[bcrypt]

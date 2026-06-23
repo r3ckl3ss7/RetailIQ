@@ -18,7 +18,7 @@ class ChatMessage(Base):
         nullable=False,
     )
     session_id = Column(String(100), nullable=False, index=True)
-    sender = Column(String(50), nullable=False)  # "user" or "assistant"
+    sender = Column(String(50), nullable=False)  
     message = Column(Text, nullable=False)
     created_at = Column(
         DateTime(timezone=True),

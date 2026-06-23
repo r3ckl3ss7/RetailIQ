@@ -45,7 +45,7 @@ async def get_history(
     """
     Retrieve the message history for a specific chat session of a business.
     """
-    # Verify business ownership first
+  
     from services.products import _get_business_for_user
     await _get_business_for_user(db, business_id, current_user_id)
     
@@ -60,7 +60,6 @@ async def get_sessions(
     """
     Retrieve all active chat session IDs and metadata for a business.
     """
-    # Verify business ownership first
     from services.products import _get_business_for_user
     await _get_business_for_user(db, business_id, current_user_id)
     
@@ -76,7 +75,6 @@ async def delete_session(
     """
     Deletes the conversation history for a specific session.
     """
-    # Verify business ownership first
     from services.products import _get_business_for_user
     await _get_business_for_user(db, business_id, current_user_id)
     

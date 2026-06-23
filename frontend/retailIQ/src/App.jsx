@@ -9,6 +9,7 @@ import UpdateBusiness from "./components/Business/UpdateBusiness";
 import Products from "./components/Products/Products";
 import Layout from "./components/Layout";
 import Invoices from "./components/Invoice/Invoices";
+import SettingsLayout from "./components/Settings/SettingsLayout";
 
 const App = () => {
   return (
@@ -72,6 +73,22 @@ const App = () => {
             <Layout>
               <Invoices />
             </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsLayout />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <SettingsLayout />
           </ProtectedRoute>
         }
       />

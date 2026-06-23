@@ -65,6 +65,7 @@ async def register_user(db: AsyncSession, payload: RegisterModel):
         "id": user.id,
         "name": user.name,
         "email": user.email,
+        "avatar_url": user.avatar_url,
         "created_at": user.created_at,
     }
 
@@ -94,7 +95,6 @@ async def login_user(db: AsyncSession, payload: LoginModel, response: Response):
     accessToken = access_token(info)
     refreshToken = refresh_token(user.id)
     
-    # Store SHA-256 hash of refresh token in database
     hashed_token = hashlib.sha256(refreshToken.encode()).hexdigest()
     db_token = AuthModel(
         user_id=user.id,
@@ -103,12 +103,11 @@ async def login_user(db: AsyncSession, payload: LoginModel, response: Response):
     db.add(db_token)
     await db.commit()
 
-    # Set HTTP-only, secure, samesite cookie on /auth path
     response.set_cookie(
         key="refresh_token",
         value=refreshToken,
         httponly=True,
-        secure=False,  # Set to False to support localhost HTTP development
+        secure=False,
         samesite="lax",
         max_age=REFRESH_TOKEN_TTL * 60,
         path="/auth",
@@ -121,12 +120,12 @@ async def login_user(db: AsyncSession, payload: LoginModel, response: Response):
             "id": user.id,
             "email": user.email,
             "name": user.name,
+            "avatar_url": user.avatar_url,
         },
     }
 
 
 async def refresh_access_token(db: AsyncSession, request: Request, response: Response):
-    # Extract refresh token from cookies
     refreshToken = request.cookies.get("refresh_token")
     if not refreshToken:
         raise HTTPException(
@@ -134,7 +133,6 @@ async def refresh_access_token(db: AsyncSession, request: Request, response: Res
             detail="Refresh token missing",
         )
 
-    # Verify signature and expiration of the refresh token
     token_data = verify_token(refreshToken)
     user_id = token_data.get("user_id")
     if not user_id:
@@ -143,7 +141,6 @@ async def refresh_access_token(db: AsyncSession, request: Request, response: Res
             detail="Invalid refresh token structure",
         )
 
-    # Verify presence of hashed refresh token in database
     hashed_token = hashlib.sha256(refreshToken.encode()).hexdigest()
     result = await db.execute(
         select(AuthModel).where(
@@ -158,7 +155,6 @@ async def refresh_access_token(db: AsyncSession, request: Request, response: Res
             detail="Refresh token not found or revoked",
         )
 
-    # Fetch user details to generate access token
     user_result = await db.execute(
         select(UserModel).where(UserModel.id == user_id)
     )
@@ -169,7 +165,6 @@ async def refresh_access_token(db: AsyncSession, request: Request, response: Res
             detail="User not found",
         )
 
-    # Generate new access token
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
@@ -180,7 +175,6 @@ async def refresh_access_token(db: AsyncSession, request: Request, response: Res
     }
     new_access_token = access_token(info)
     
-    # Rotate refresh token: generate new one, hash it, delete old, save new
     new_refresh_token = refresh_token(user.id)
     new_hashed_token = hashlib.sha256(new_refresh_token.encode()).hexdigest()
     
@@ -193,12 +187,11 @@ async def refresh_access_token(db: AsyncSession, request: Request, response: Res
     db.add(new_db_token)
     await db.commit()
 
-    # Set rotated refresh token in cookie
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=False,  # Set to False to support localhost HTTP development
+        secure=False,  
         samesite="lax",
         max_age=REFRESH_TOKEN_TTL * 60,
         path="/auth",
@@ -222,7 +215,6 @@ async def logout_user(db: AsyncSession, request: Request, response: Response):
             await db.delete(db_token)
             await db.commit()
             
-    # Clear the refresh token cookie
     response.delete_cookie("refresh_token", path="/auth")
     
     return {"Message": "Logged out successfully"}

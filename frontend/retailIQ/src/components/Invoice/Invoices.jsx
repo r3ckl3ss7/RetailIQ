@@ -5,7 +5,6 @@ import {
   fetchInvoices,
   fetchCustomers,
   createInvoice,
-  createInvoiceOCR,
   updateInvoice,
 } from "../../features/invoice/invoiceThunk";
 import { fetchProducts } from "../../features/product/productThunk";
@@ -14,7 +13,7 @@ import { clearSelectedInvoice, clearInvoiceError } from "../../features/invoice/
 const Invoices = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
+
 
   const { selectedBusinessId, businesses } = useSelector((state) => state.business);
   const { data: invoices, customers, loading, error } = useSelector((state) => state.invoices);
@@ -24,8 +23,7 @@ const Invoices = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState(null);
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrError, setOcrError] = useState("");
+
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState("");
 
@@ -94,45 +92,6 @@ const Invoices = () => {
 
   const renderNotes = (notes) => {
     if (!notes) return null;
-    try {
-      const parsed = JSON.parse(notes);
-      if (parsed && typeof parsed === "object" && (parsed.ocr_confidence || parsed.ocr_text || parsed.unknown_items)) {
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
-            {parsed.ocr_confidence && (
-              <p style={{ fontSize: "0.8125rem", margin: 0, color: "var(--slate-600)" }}>
-                AI OCR Confidence: <strong>{Math.round(parsed.ocr_confidence * 100)}%</strong>
-              </p>
-            )}
-            {parsed.unknown_items && parsed.unknown_items.length > 0 && (
-              <div style={{ marginTop: "4px" }}>
-                <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--danger-600)", margin: "0 0 4px 0" }}>
-                  Unresolved Scanned Items:
-                </p>
-                <ul style={{ paddingLeft: "16px", margin: 0, fontSize: "0.8125rem", color: "var(--slate-500)" }}>
-                  {parsed.unknown_items.map((item, i) => (
-                    <li key={i}>
-                      {item.name} (Qty: {item.quantity}, Price: {formatCurrency(item.amount)})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {parsed.ocr_text && (
-              <details style={{ marginTop: "6px" }}>
-                <summary style={{ fontSize: "0.75rem", color: "var(--slate-400)", cursor: "pointer", outline: "none" }}>
-                  Show raw extracted text
-                </summary>
-                <pre style={{ fontSize: "0.6875rem", background: "var(--slate-50)", padding: "8px", borderRadius: "4px", whiteSpace: "pre-wrap", overflowX: "auto", marginTop: "4px", maxHeight: "120px" }}>
-                  {parsed.ocr_text}
-                </pre>
-              </details>
-            )}
-          </div>
-        );
-      }
-    } catch (e) {
-    }
     return (
       <p style={{ fontSize: "0.8125rem", color: "var(--slate-500)", marginTop: "4px", whiteSpace: "pre-line" }}>
         {notes}
@@ -249,53 +208,7 @@ const Invoices = () => {
     }
   };
 
-  const handleOcrClick = () => {
-    fileInputRef.current.click();
-  };
 
-  const handleOcrFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setOcrError("Please upload an image file (PNG, JPG, JPEG).");
-      return;
-    }
-
-    setOcrLoading(true);
-    setOcrError("");
-
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      try {
-        const rawBase64 = reader.result.split(",")[1];
-        const result = await dispatch(
-          createInvoiceOCR({
-            business_id: parseInt(selectedBusinessId),
-            image_base64: rawBase64,
-            deduct_from_stock: true,
-          })
-        );
-
-        if (!result.error) {
-          dispatch(fetchInvoices(selectedBusinessId));
-          setViewingInvoice(result.payload);
-        } else {
-          setOcrError(
-            typeof result.payload === "string"
-              ? result.payload
-              : "Failed to read receipt. Make sure pricing text is readable."
-          );
-        }
-      } catch (err) {
-        setOcrError("Failed to convert image. Please try another file.");
-      } finally {
-        setOcrLoading(false);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
-    };
-  };
 
   const handleUpdateStatus = async (newStatus) => {
     if (!viewingInvoice) return;
@@ -368,39 +281,11 @@ const Invoices = () => {
               <div>
                 <h1 className="dashboard-greeting">Invoices</h1>
                 <p className="dashboard-tagline">
-                  Generate manual bills, track billing status, and upload receipt scans for <strong>{selectedBusiness?.name}</strong>.
+                  Generate manual bills and track billing status for <strong>{selectedBusiness?.name}</strong>.
                 </p>
               </div>
               {!showCreateForm && !viewingInvoice && (
                 <div className="flex-gap-2">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: "none" }}
-                    accept="image/*"
-                    onChange={handleOcrFileChange}
-                  />
-                  <button
-                    className="btn-secondary"
-                    onClick={handleOcrClick}
-                    disabled={ocrLoading}
-                    style={{ borderStyle: "dashed" }}
-                  >
-                    {ocrLoading ? (
-                      <>
-                        <span className="spinner" style={{ width: "14px", height: "14px", marginRight: "4px" }} />
-                        Scanning...
-                      </>
-                    ) : (
-                      <>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: "4px" }}>
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                          <circle cx="12" cy="13" r="4" />
-                        </svg>
-                        OCR Scan Receipt
-                      </>
-                    )}
-                  </button>
                   <button className="btn-primary" style={{ width: "auto" }} onClick={() => setShowCreateForm(true)}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: "4px" }}>
                       <line x1="12" y1="5" x2="12" y2="19" />
@@ -412,11 +297,7 @@ const Invoices = () => {
               )}
             </div>
 
-            {ocrError && (
-              <div className="auth-error mb-4">
-                <span>{ocrError}</span>
-              </div>
-            )}
+
             {error && (
               <div className="auth-error mb-4">
                 <span>{typeof error === "string" ? error : "Something went wrong fetching invoices."}</span>
@@ -953,7 +834,7 @@ const Invoices = () => {
                       </svg>
                       <h3>No Invoices Found</h3>
                       <p style={{ fontSize: "0.875rem" }}>
-                        {searchQuery ? "Try refining your search terms." : "Create your first customer invoice manually or scan a billing receipt."}
+                        {searchQuery ? "Try refining your search terms." : "Create your first customer invoice manually."}
                       </p>
                     </div>
                   ) : (

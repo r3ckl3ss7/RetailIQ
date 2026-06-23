@@ -117,6 +117,8 @@ async def update_profile(
                     detail="Email already in use",
                 )
             user.email = payload.email
+        if payload.avatar_url is not None:
+            user.avatar_url = payload.avatar_url
 
         if payload.password is not None:
             user.password = hash_password(payload.password)

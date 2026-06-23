@@ -16,7 +16,6 @@ import "./Chatbot.css";
 const Chatbot = () => {
   const dispatch = useDispatch();
 
-  // State from Redux
   const businessId = useSelector((state) => state.business.selectedBusinessId);
   const messages = useSelector((state) => state.chat.messages);
   const sessionId = useSelector((state) => state.chat.sessionId);
@@ -24,20 +23,17 @@ const Chatbot = () => {
   const loading = useSelector((state) => state.chat.loading);
   const fetchingHistory = useSelector((state) => state.chat.fetchingHistory);
 
-  // Local UI state
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
 
   const messagesEndRef = useRef(null);
 
-  // Scroll to bottom on new messages or when panel opens
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isOpen, loading]);
 
-  // Load active sessions when business selection changes
   useEffect(() => {
     if (businessId) {
       dispatch(fetchSessions(businessId));
@@ -47,16 +43,11 @@ const Chatbot = () => {
     }
   }, [businessId, dispatch]);
 
-  // Load message history when session changes
   useEffect(() => {
     if (businessId && sessionId) {
       dispatch(fetchChatHistory({ businessId, sessionId }));
     } else {
-      // Clear messages if we start a fresh chat or session is reset
-      // Note: We don't want to clear session ID here to prevent loops, 
-      // but if sessionId is null we should reset the active message thread
       if (!sessionId) {
-        // We only clear messages if we are starting a fresh chat
         dispatch(clearChat());
       }
     }
@@ -69,7 +60,6 @@ const Chatbot = () => {
     const userText = input;
     setInput("");
 
-    // Optimistically add User message to Redux store
     dispatch(
       optimisticUserMessage({
         id: Date.now(),
@@ -79,11 +69,9 @@ const Chatbot = () => {
       })
     );
 
-    // Send chat message via thunk
     dispatch(sendChatMessage({ businessId, message: userText, sessionId }))
       .unwrap()
       .then(() => {
-        // Refresh sessions list to show correct latest message
         dispatch(fetchSessions(businessId));
       });
   };
@@ -99,7 +87,6 @@ const Chatbot = () => {
     dispatch(deleteSession({ businessId, sessionId }));
   };
 
-  // Helper utility to parse code snippets and SQL scripts in chat bubbles
   const renderMessageContent = (content) => {
     if (!content) return "";
 
@@ -144,7 +131,6 @@ const Chatbot = () => {
 
   return (
     <div className="chatbot-container">
-      {/* Floating Toggle Icon */}
       <button className="chatbot-toggle-btn" onClick={() => setIsOpen(!isOpen)}>
         {isOpen ? (
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -153,10 +139,8 @@ const Chatbot = () => {
         )}
       </button>
 
-      {/* Floating Chat Box Window */}
       {isOpen && (
         <div className="chatbot-window">
-          {/* Chat Window Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-top">
               <div className="chatbot-header-title">
@@ -164,24 +148,20 @@ const Chatbot = () => {
                 RetailIQ Query Assistant
               </div>
               <div className="chatbot-header-actions">
-                {/* New Chat Button */}
                 <button className="chatbot-header-btn" title="Start New Chat" onClick={handleNewChat}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5v14" /></svg>
                 </button>
-                {/* Delete Session Button */}
                 {sessionId && (
                   <button className="chatbot-header-btn" title="Delete Current Session" onClick={handleDeleteSession}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" /></svg>
                   </button>
                 )}
-                {/* Minimize Button */}
                 <button className="chatbot-header-btn" title="Close" onClick={() => setIsOpen(false)}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
                 </button>
               </div>
             </div>
 
-            {/* Session Selector Row */}
             {sessions.length > 0 && (
               <div className="chatbot-session-row">
                 <select
@@ -200,10 +180,8 @@ const Chatbot = () => {
             )}
           </div>
 
-          {/* Messages Listing */}
           <div className="chatbot-messages">
             {!businessId ? (
-              // Validation for business select state
               <div className="chatbot-empty">
                 <svg className="chatbot-empty-icon" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" /></svg>
                 <div className="chatbot-empty-text">
@@ -211,7 +189,6 @@ const Chatbot = () => {
                 </div>
               </div>
             ) : fetchingHistory ? (
-              // Loader when fetching chat history
               <div className="chatbot-empty">
                 <div className="chatbot-typing-bubble">
                   <div className="chatbot-typing-dot"></div>
@@ -221,7 +198,6 @@ const Chatbot = () => {
                 <div className="chatbot-empty-text">Loading chat history...</div>
               </div>
             ) : messages.length === 0 ? (
-              // Welcome Screen
               <div className="chatbot-empty">
                 <svg className="chatbot-empty-icon" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 1 7.54 16.59L21 22l-5.41-1.46A10 10 0 1 1 12 2z" /></svg>
                 <div className="chatbot-empty-text font-semibold">
@@ -249,7 +225,6 @@ const Chatbot = () => {
               ))
             )}
 
-            {/* Typing Indicator */}
             {loading && (
               <div className="chatbot-msg-wrapper assistant">
                 <div className="chatbot-msg-bubble chatbot-typing-bubble">
@@ -260,11 +235,9 @@ const Chatbot = () => {
               </div>
             )}
 
-            {/* Scroll Anchor */}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Message Input Form */}
           <form className="chatbot-input-container" onSubmit={handleSend}>
             <input
               type="text"
