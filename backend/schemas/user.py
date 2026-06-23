@@ -25,6 +25,7 @@ class Business(BaseModel):
 class User(BaseModel):
     model_config = {"from_attributes": True}
 
+    id:int  
     name: str
     email: EmailStr
     avatar_url: str | None = None

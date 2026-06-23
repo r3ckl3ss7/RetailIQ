@@ -1,3 +1,4 @@
+from schemas.user import User as UserProfile
 from fastapi import HTTPException, status,Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,7 +85,7 @@ async def update_profile(
     payload: UpdateUserProfile,
     user_id: int,
     current_user_id: int,
-) -> UserModel:
+) ->UserProfile:
     if current_user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -125,7 +126,17 @@ async def update_profile(
 
         db.add(user)
         await db.commit()
-        await db.refresh(user)
+        # await db.refresh(user)
+        # user = result.scalar_one()
+        await db.commit()
+
+        result = await db.execute(
+            select(UserModel)
+            .options(selectinload(UserModel.businesses))
+            .where(UserModel.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        
         return user
     except HTTPException:
         raise

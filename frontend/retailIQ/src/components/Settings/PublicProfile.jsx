@@ -87,12 +87,11 @@ const PublicProfile = () => {
         email,
         avatar_url: avatarUrl,
       };
-      console.log(user)
       const response = await api.patch(`/user/${user.id}`, payload);
       const updatedUser = response.data;
-
       localStorage.setItem("user", JSON.stringify(updatedUser));
       dispatch(updateUserSuccess(updatedUser));
+
 
       setNotification({
         type: "success",
