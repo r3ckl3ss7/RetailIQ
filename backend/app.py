@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from sqlalchemy import text
 
 from db.database import async_engine
@@ -10,8 +12,16 @@ from routes.user import router as userRouter
 from routes.products import router as productsRouter
 from routes.analytics import router as analyticsRouter
 from routes.ai import router as aiRouter
+from routes.upload import router as uploadRouter
 
 app = FastAPI()
+
+# Ensure uploads directory exists relative to app.py
+BASE_DIR = Path(__file__).resolve().parent
+uploads_dir = BASE_DIR / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,5 +56,6 @@ app.include_router(userRouter)
 app.include_router(productsRouter)
 app.include_router(analyticsRouter)
 app.include_router(aiRouter)
+app.include_router(uploadRouter)
 
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import api from "../../services/api";
 import { updateUserSuccess } from "../../features/auth/authSlice";
+import { uploadImage } from "../../services/upload";
 
 const PublicProfile = () => {
   const dispatch = useDispatch();
@@ -41,7 +42,7 @@ const PublicProfile = () => {
     setNotification(null);
 
     try {
-      const secureUrl = await uploadImageToCloudinary(file);
+      const secureUrl = await uploadImage(file, "avatar");
       setAvatarUrl(secureUrl);
 
       const updatedUserPayload = {
@@ -86,7 +87,7 @@ const PublicProfile = () => {
         email,
         avatar_url: avatarUrl,
       };
-
+      console.log(user)
       const response = await api.patch(`/user/${user.id}`, payload);
       const updatedUser = response.data;
 

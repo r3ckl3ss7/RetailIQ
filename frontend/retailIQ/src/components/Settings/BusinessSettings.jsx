@@ -13,6 +13,7 @@ import {
   hasErrors,
   BUSINESS_RULES,
 } from "../../utils/formValidation";
+import { uploadImage } from "../../services/upload";
 
 const BusinessSettings = () => {
   const dispatch = useDispatch();
@@ -148,7 +149,7 @@ const BusinessSettings = () => {
 
     setLogoUploading(true);
     try {
-      const secureUrl = await uploadImageToCloudinary(file);
+      const secureUrl = await uploadImage(file, "logo");
       setFormData((prev) => ({ ...prev, logo_url: secureUrl }));
       setNotification({
         type: "success",
