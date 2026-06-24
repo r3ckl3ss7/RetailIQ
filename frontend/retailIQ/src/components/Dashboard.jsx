@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetch_user_businesses } from "../features/business/businessThunk";
-import api from "../services/api";
+import { fetchDashboardData } from "../features/dashboard/dashboardThunk";
 import Chatbot from "./Chatbot/Chatbot";
 const CHART_PADDING = { top: 20, right: 20, bottom: 40, left: 64 };
 function shortCurrency(v) {
@@ -245,22 +245,21 @@ const Dashboard = () => {
   const { businesses, selectedBusinessId, loading } = useSelector(
     (state) => state.business
   );
-  const [metrics, setMetrics] = useState({
-    totalSales: 0.0,
-    totalInvoices: 0,
-    recentCustomers: 0,
-  });
+  const {
+    metrics,
+    revenueCompare,
+    topProducts,
+    lowStock,
+    revenueTrend,
+    invoiceBreakdown,
+    avgOrderValue,
+    topCustomers,
+    profitMargins,
+    loading: analyticsLoading,
+    error: analyticsError,
+  } = useSelector((state) => state.dashboard);
+
   const [timeRange, setTimeRange] = useState("month");
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState(null);
-  const [revenueCompare, setRevenueCompare] = useState(null);
-  const [topProducts, setTopProducts] = useState([]);
-  const [lowStock, setLowStock] = useState([]);
-  const [revenueTrend, setRevenueTrend] = useState([]);
-  const [invoiceBreakdown, setInvoiceBreakdown] = useState({});
-  const [avgOrderValue, setAvgOrderValue] = useState(null);
-  const [topCustomers, setTopCustomers] = useState([]);
-  const [profitMargins, setProfitMargins] = useState(null);
   const selectedBusiness = businesses.find((b) => b.id === selectedBusinessId);
   useEffect(() => {
     if (user?.id) {
@@ -269,73 +268,8 @@ const Dashboard = () => {
   }, [dispatch, user?.id]);
   useEffect(() => {
     if (!selectedBusinessId) return;
-    const fetchDashboardAnalytics = async () => {
-      setAnalyticsLoading(true);
-      setAnalyticsError(null);
-      let days = 30;
-      if (timeRange === "today") days = 1;
-      else if (timeRange === "week") days = 7;
-      else if (timeRange === "month") days = 30;
-      else if (timeRange === "year") days = 365;
-      else if (timeRange === "all") days = 3650;
-      try {
-        const [
-          metricsRes,
-          revenueRes,
-          topProductsRes,
-          lowStockRes,
-          revenueTrendRes,
-          invoiceBreakdownRes,
-          avgOrderValueRes,
-          topCustomersRes,
-          profitMarginsRes,
-        ] = await Promise.all([
-          api.get("/dashboard", {
-            params: { business_id: selectedBusinessId, time: timeRange },
-          }),
-          api.get("/dashboard/revenue", {
-            params: { business_id: selectedBusinessId },
-          }),
-          api.get("/dashboard/top-products", {
-            params: { business_id: selectedBusinessId, limit: 5, days },
-          }),
-          api.get("/dashboard/low-stock", {
-            params: { business_id: selectedBusinessId, threshold: 10 },
-          }),
-          api.get("/dashboard/revenue-trend", {
-            params: { business_id: selectedBusinessId, days },
-          }),
-          api.get("/dashboard/invoice-breakdown", {
-            params: { business_id: selectedBusinessId },
-          }),
-          api.get("/dashboard/avg-order-value", {
-            params: { business_id: selectedBusinessId, days },
-          }),
-          api.get("/dashboard/top-customers", {
-            params: { business_id: selectedBusinessId, limit: 5, days },
-          }),
-          api.get("/dashboard/profit-margins", {
-            params: { business_id: selectedBusinessId, days },
-          }),
-        ]);
-        setMetrics(metricsRes.data);
-        setRevenueCompare(revenueRes.data);
-        setTopProducts(topProductsRes.data);
-        setLowStock(lowStockRes.data);
-        setRevenueTrend(revenueTrendRes.data);
-        setInvoiceBreakdown(invoiceBreakdownRes.data);
-        setAvgOrderValue(avgOrderValueRes.data);
-        setTopCustomers(topCustomersRes.data);
-        setProfitMargins(profitMarginsRes.data);
-      } catch (err) {
-        console.error("Error fetching dashboard analytics:", err);
-        setAnalyticsError("Failed to fetch dashboard metrics. Please reload the page.");
-      } finally {
-        setAnalyticsLoading(false);
-      }
-    };
-    fetchDashboardAnalytics();
-  }, [selectedBusinessId, timeRange]);
+    dispatch(fetchDashboardData({ businessId: selectedBusinessId, timeRange }));
+  }, [selectedBusinessId, timeRange, dispatch]);
   const greeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";

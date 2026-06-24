@@ -13,7 +13,7 @@ import {
   hasErrors,
   BUSINESS_RULES,
 } from "../../utils/formValidation";
-import { uploadImage } from "../../services/upload";
+import { uploadImageThunk } from "../../features/upload/uploadThunk";
 
 const BusinessSettings = () => {
   const dispatch = useDispatch();
@@ -149,7 +149,7 @@ const BusinessSettings = () => {
 
     setLogoUploading(true);
     try {
-      const secureUrl = await uploadImage(file, "logo");
+      const secureUrl = await dispatch(uploadImageThunk({ file, type: "logo" })).unwrap();
       setFormData((prev) => ({ ...prev, logo_url: secureUrl }));
       setNotification({
         type: "success",

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import api from "../../services/api";
-import { updateUserSuccess } from "../../features/auth/authSlice";
-import { uploadImage } from "../../services/upload";
+import { updateUserProfile } from "../../features/auth/authThunks";
+import { uploadImageThunk } from "../../features/upload/uploadThunk";
 
 const PublicProfile = () => {
   const dispatch = useDispatch();
@@ -42,7 +41,7 @@ const PublicProfile = () => {
     setNotification(null);
 
     try {
-      const secureUrl = await uploadImage(file, "avatar");
+      const secureUrl = await dispatch(uploadImageThunk({ file, type: "avatar" })).unwrap();
       setAvatarUrl(secureUrl);
 
       const updatedUserPayload = {
@@ -51,11 +50,7 @@ const PublicProfile = () => {
         avatar_url: secureUrl
       };
 
-      const response = await api.patch(`/user/${user.id}`, updatedUserPayload);
-      const updatedUser = response.data;
-
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      dispatch(updateUserSuccess(updatedUser));
+      await dispatch(updateUserProfile(user.id, updatedUserPayload));
 
       setNotification({
         type: "success",
@@ -87,11 +82,7 @@ const PublicProfile = () => {
         email,
         avatar_url: avatarUrl,
       };
-      const response = await api.patch(`/user/${user.id}`, payload);
-      const updatedUser = response.data;
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      dispatch(updateUserSuccess(updatedUser));
-
+      await dispatch(updateUserProfile(user.id, payload));
 
       setNotification({
         type: "success",
@@ -99,7 +90,7 @@ const PublicProfile = () => {
       });
     } catch (err) {
       console.error(err);
-      const errMsg = err.response?.data?.detail || "Failed to update profile. Please try again.";
+      const errMsg = err.message || "Failed to update profile. Please try again.";
       setNotification({
         type: "error",
         message: errMsg,

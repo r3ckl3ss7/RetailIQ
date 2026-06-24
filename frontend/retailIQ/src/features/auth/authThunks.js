@@ -1,5 +1,5 @@
 import api from "../../services/api";
-import { loginStart, loginSuccess, loginFailure, logout } from "./authSlice";
+import { loginStart, loginSuccess, loginFailure, logout, updateUserSuccess } from "./authSlice";
 
 export const loginUser = (email, password) => async (dispatch) => {
   dispatch(loginStart());
@@ -40,3 +40,18 @@ export const logoutUser = () => async (dispatch) => {
   localStorage.removeItem("user");
   dispatch(logout());
 };
+
+export const updateUserProfile = (userId, payload) => async (dispatch) => {
+  try {
+    const response = await api.patch(`/user/${userId}`, payload);
+    const updatedUser = response.data;
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    dispatch(updateUserSuccess(updatedUser));
+    return updatedUser;
+  } catch (err) {
+    const message =
+      err.response?.data?.detail || "Failed to update profile. Please try again.";
+    throw new Error(message);
+  }
+};
+
