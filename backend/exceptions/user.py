@@ -47,11 +47,14 @@ class EmailAlreadyInUseException(UserException):
         )
 
 
-class PasswordTooShortException(UserException):
-    """Raised when the updated password is too short."""
-    def __init__(self, message: str = "Password must be at least 8 characters long"):
+
+
+class UserDeletionForbiddenException(UserException):
+    """Raised when a user tries to delete a profile they don't own."""
+    def __init__(self, message: str = "You are not allowed to delete this user"):
         super().__init__(
             message=message,
-            status_code=400,
-            error_code="PASSWORD_TOO_SHORT"
+            status_code=403,
+            error_code="USER_DELETION_FORBIDDEN"
         )
+

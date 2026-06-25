@@ -12,13 +12,21 @@ from exceptions.database import (
     DuplicateGSTNumberException,
     DatabaseIntegrityException,
     DatabaseUnexpectedException,
+    DatabaseException,
 )
 from exceptions.user import (
     UserException,
     ProfileModificationForbiddenException,
     UserNotFoundException,
     EmailAlreadyInUseException,
-    PasswordTooShortException,
+    UserDeletionForbiddenException,
+)
+from exceptions.business import (
+    BusinessException,
+    DuplicateGSTNumber,
+    BusinessNotFoundException,
+    BusinessModificationForbiddenException,
+    BusinessDeletionForbiddenException,
 )
 
 
@@ -140,10 +148,7 @@ async def update_profile(
             user.avatar_url = payload.avatar_url
 
         if payload.password is not None:
-            if len(payload.password) >= 8:
-                user.password = hash_password(payload.password)
-            else:
-                raise PasswordTooShortException()
+            user.password = hash_password(payload.password)
 
         db.add(user)
         await db.commit()
@@ -177,18 +182,12 @@ async def update_business(
     )
     business = result.scalar_one_or_none()
     if not business:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Business not found",
-        )
+        raise BusinessNotFoundException()
 
     if business.user_id != current_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to modify this business",
-        )
+        raise BusinessModificationForbiddenException()
 
-    # Explicitly check for duplicate GST number to return a friendly HTTP 400 Bad Request
+
     if payload.gst_number:
         result = await db.execute(
             select(BusinessModel).where(
@@ -198,13 +197,13 @@ async def update_business(
         )
         existing_business = result.scalar_one_or_none()
         if existing_business:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A business with this GST number already exists.",
-            )
+            raise DuplicateGSTNumber()
 
     try:
         update_data = payload.model_dump(exclude_unset=True)
+        if not update_data:
+            return business
+
         for key, value in update_data.items():
             setattr(business, key, value)
 
@@ -212,20 +211,18 @@ async def update_business(
         await db.commit()
         await db.refresh(business)
         return business
-    except HTTPException:
+    except (BusinessException, DatabaseException):
         await db.rollback()
         raise
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Database integrity violation. Please check that unique constraints are satisfied.",
+        raise DatabaseIntegrityException(
+            "Database integrity violation. Please check that unique constraints are satisfied."
         ) from exc
     except Exception as exc:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred while updating the business.",
+        raise DatabaseUnexpectedException(
+            "An unexpected error occurred while updating the business."
         ) from exc
 
 
@@ -235,27 +232,21 @@ async def delete_user(
     current_user_id: int,
 ) -> None:
     if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to delete this user",
-        )
+        raise UserDeletionForbiddenException()
     try:
         result = await db.execute(select(UserModel).where(UserModel.id == user_id))
         user = result.scalar_one_or_none()
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise UserNotFoundException()
         await db.delete(user)
         await db.commit()
-    except HTTPException:
+    except (UserException, DatabaseException):
+        await db.rollback()
         raise
     except Exception as exc:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+        raise DatabaseUnexpectedException(
+            "An unexpected error occurred while deleting the user."
         ) from exc
 
 
@@ -263,31 +254,27 @@ async def delete_business(
     db: AsyncSession,
     business_id: int,
     current_user_id: int,
-) -> None:
+) -> Response:
     result = await db.execute(
         select(BusinessModel).where(BusinessModel.id == business_id)
     )
     business = result.scalar_one_or_none()
     if not business:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Business not found",
-        )
+        raise BusinessNotFoundException()
 
     if business.user_id != current_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to delete this business",
-        )
+        raise BusinessDeletionForbiddenException()
 
     try:
         await db.delete(business)
         await db.commit()
         return Response(content="Business information deleted successfully",
                         status_code=200)
+    except (BusinessException, DatabaseException):
+        await db.rollback()
+        raise
     except Exception as exc:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+        raise DatabaseUnexpectedException(
+            "An unexpected error occurred while deleting the business."
         ) from exc

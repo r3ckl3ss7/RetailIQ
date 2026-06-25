@@ -9,6 +9,7 @@ from exceptions.database import (
     DatabaseIntegrityException,
     DatabaseUnexpectedException,
 )
+from exceptions.business import BusinessException
 from services.user import (
     create_business as create_business_service,
     delete_business as delete_business_service,
@@ -94,7 +95,23 @@ async def update_business_details(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ) -> BusinessDetails:
-    return await update_business_service(db, payload, business_id, current_user_id)
+    try:
+        return await update_business_service(db, payload, business_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except DatabaseIntegrityException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
 
 
 @router.delete('/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
@@ -103,7 +120,18 @@ async def delete_user(
     current_user_id:int=Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
-    return await delete_user_service(db, user_id, current_user_id)
+    try:
+        return await delete_user_service(db, user_id, current_user_id)
+    except UserException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
 
 @router.delete('/business/{business_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_business(
@@ -111,4 +139,15 @@ async def delete_business(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
-    return await delete_business_service(db, business_id, current_user_id)
+    try:
+        return await delete_business_service(db, business_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
