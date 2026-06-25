@@ -59,16 +59,19 @@ class Customer(Base):
     email = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     address = relationship('CustomerAddress', back_populates='customer', uselist=False, cascade='all, delete-orphan')
+    business = relationship('Business', back_populates='customers')
 
 
 class Payment(Base):
     __tablename__ = 'payment'
     id = Column(Integer, primary_key=True, index=True)
+    business_id = Column(Integer, ForeignKey('businesses.id', ondelete='CASCADE'), nullable=False, index=True)
     method = Column(Enum(PaymentMethod), nullable=False)
     status = Column(String(20), nullable=True)
     amount = Column(Numeric(12, 2), nullable=False)
     paid_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    business = relationship('Business', back_populates='payments')
 
 
 class Invoice(Base):
@@ -89,6 +92,7 @@ class Invoice(Base):
     customer = relationship('Customer')
     payment = relationship('Payment')
     items = relationship('InvoiceItem', back_populates='invoice', cascade='all, delete-orphan')
+    business = relationship('Business', back_populates='invoices')
 
 
 class InvoiceItem(Base):

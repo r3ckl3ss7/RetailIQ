@@ -79,6 +79,24 @@ class Business(Base):
         cascade="all, delete",
     )
 
+    customers = relationship(
+        "Customer",
+        back_populates="business",
+        cascade="all, delete",
+    )
+
+    payments = relationship(
+        "Payment",
+        back_populates="business",
+        cascade="all, delete",
+    )
+
+    invoices = relationship(
+        "Invoice",
+        back_populates="business",
+        cascade="all, delete",
+    )
+
 
 async def create_table():
     from models.products import Product
