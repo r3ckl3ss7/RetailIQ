@@ -18,3 +18,11 @@ class DatabaseIntegrityException(DatabaseException):
 class DatabaseUnexpectedException(DatabaseException):
     """Raised when an unexpected database error occurs."""
     pass
+
+
+
+
+class UserAlreadyExist(DatabaseException):
+    """Raised when user email already exist"""
+
+

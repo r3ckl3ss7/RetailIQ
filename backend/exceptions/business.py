@@ -15,6 +15,10 @@ class DuplicateGSTNumber(BusinessException):
             400
         )
 
+class UnauthorisedBusinessAccess(BusinessException):
+    def __init__(self,message:str="Access Forbidden | Business does not belong to logged in user!"):
+        super().__init__(status_code=403,error_code="UNAUTHORISED_ACCESS",message=message)
+        
 
 class BusinessNotFoundException(BusinessException):
     def __init__(self, message: str = "Business not found"):
@@ -35,7 +39,6 @@ class BusinessModificationForbiddenException(BusinessException):
 
 
 
-
 class BusinessDeletionForbiddenException(BusinessException):
     def __init__(self, message: str = "You are not allowed to delete this business"):
         super().__init__(
@@ -43,4 +46,4 @@ class BusinessDeletionForbiddenException(BusinessException):
             message,
             403
         )
-
+
