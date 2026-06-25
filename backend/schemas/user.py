@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 
 
@@ -37,15 +37,15 @@ class User(BaseModel):
 class UpdatedBusiness(BaseModel):
     model_config = {"from_attributes": True}
 
-    name: str | None = None
-    gst_number: str | None = None
-    phone: str | None = None
-    email: str | None = None
+    name: str | None = Field(None, min_length=1, pattern=r"^\s*\S.*$")
+    gst_number: str | None = Field(None, pattern=r"^[a-zA-Z0-9]{15}$")
+    phone: str | None = Field(None, pattern=r"^\+?[0-9\s\-]{7,15}$")
+    email: EmailStr | None = None
     address: str | None = None
     city: str | None = None
     state: str | None = None
     country: str | None = None
-    postal_code: str | None = None
+    postal_code: str | None = Field(None, pattern=r"^[a-zA-Z0-9\s\-]{3,10}$")
     logo_url: str | None = None
     invoice_prefix: str | None = None
     currency: str | None = None
@@ -55,7 +55,8 @@ class UpdatedBusiness(BaseModel):
 class UpdateUserProfile(BaseModel):
     model_config = {"from_attributes": True}
 
-    name: str | None = None
+    name: str | None = Field(None, min_length=1, pattern=r"^\s*\S.*$")
     email: EmailStr | None = None
-    password: str | None = None
+    password: str | None = Field(None, min_length=8)
     avatar_url: str | None = None
+
