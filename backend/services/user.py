@@ -1,12 +1,25 @@
 from schemas.user import User as UserProfile
 from fastapi import HTTPException, status,Response
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from models.user import User as UserModel, Business as BusinessModel
 from schemas.user import Business as BusinessDetails, UpdatedBusiness, UpdateUserProfile
 from services.auth import hash_password
+from exceptions.database import (
+    DuplicateGSTNumberException,
+    DatabaseIntegrityException,
+    DatabaseUnexpectedException,
+)
+from exceptions.user import (
+    UserException,
+    ProfileModificationForbiddenException,
+    UserNotFoundException,
+    EmailAlreadyInUseException,
+    PasswordTooShortException,
+)
 
 
 async def get_user_profile(db: AsyncSession, user_id: int) -> UserModel:
@@ -51,6 +64,16 @@ async def create_business(
     payload: BusinessDetails,
     current_user_id: int,
 ) -> BusinessModel:
+    if payload.gst_number:
+        result = await db.execute(
+            select(BusinessModel).where(BusinessModel.gst_number == payload.gst_number)
+        )
+        existing_business = result.scalar_one_or_none()
+        if existing_business:
+            raise DuplicateGSTNumberException(
+                "A business with this GST number already exists."
+            )
+
     try:
         new_business = BusinessModel(
             user_id=current_user_id,
@@ -72,11 +95,15 @@ async def create_business(
         await db.commit()
         await db.refresh(new_business)
         return new_business
+    except IntegrityError as exc:
+        await db.rollback()
+        raise DatabaseIntegrityException(
+            "Database integrity violation. Please check that unique constraints are satisfied."
+        ) from exc
     except Exception as exc:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+        raise DatabaseUnexpectedException(
+            "An unexpected error occurred while creating the business."
         ) from exc
 
 
@@ -87,18 +114,12 @@ async def update_profile(
     current_user_id: int,
 ) ->UserProfile:
     if current_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to modify this profile",
-        )
+        raise ProfileModificationForbiddenException()
 
     result = await db.execute(select(UserModel).where(UserModel.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+        raise UserNotFoundException()
 
     try:
         if payload.name is not None:
@@ -113,21 +134,18 @@ async def update_profile(
             )
             existing = existing_result.scalar_one_or_none()
             if existing:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already in use",
-                )
+                raise EmailAlreadyInUseException()
             user.email = payload.email
         if payload.avatar_url is not None:
             user.avatar_url = payload.avatar_url
 
         if payload.password is not None:
-            user.password = hash_password(payload.password)
+            if len(payload.password) >= 8:
+                user.password = hash_password(payload.password)
+            else:
+                raise PasswordTooShortException()
 
         db.add(user)
-        await db.commit()
-        # await db.refresh(user)
-        # user = result.scalar_one()
         await db.commit()
 
         result = await db.execute(
@@ -138,7 +156,7 @@ async def update_profile(
         user = result.scalar_one_or_none()
         
         return user
-    except HTTPException:
+    except (HTTPException, UserException):
         raise
     except Exception as exc:
         await db.rollback()
@@ -170,6 +188,21 @@ async def update_business(
             detail="You are not allowed to modify this business",
         )
 
+    # Explicitly check for duplicate GST number to return a friendly HTTP 400 Bad Request
+    if payload.gst_number:
+        result = await db.execute(
+            select(BusinessModel).where(
+                BusinessModel.gst_number == payload.gst_number,
+                BusinessModel.id != business_id,
+            )
+        )
+        existing_business = result.scalar_one_or_none()
+        if existing_business:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A business with this GST number already exists.",
+            )
+
     try:
         update_data = payload.model_dump(exclude_unset=True)
         for key, value in update_data.items():
@@ -179,11 +212,20 @@ async def update_business(
         await db.commit()
         await db.refresh(business)
         return business
+    except HTTPException:
+        await db.rollback()
+        raise
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Database integrity violation. Please check that unique constraints are satisfied.",
+        ) from exc
     except Exception as exc:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="An unexpected error occurred while updating the business.",
         ) from exc
 
 

@@ -1,8 +1,14 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_async_db
 from middlewares.auth import auth, current_user
+from exceptions.database import (
+    DuplicateGSTNumberException,
+    DatabaseIntegrityException,
+    DatabaseUnexpectedException,
+)
 from services.user import (
     create_business as create_business_service,
     delete_business as delete_business_service,
@@ -45,7 +51,26 @@ async def create_business(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ) -> BusinessDetails:
-    return await create_business_service(db, payload, current_user_id)
+    try:
+        return await create_business_service(db, payload, current_user_id)
+    except DuplicateGSTNumberException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        )
+    except DatabaseIntegrityException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
+
+from exceptions.user import UserException
+
 
 @router.patch('/{user_id}', response_model=UserProfile)
 async def update_profile(
@@ -54,7 +79,13 @@ async def update_profile(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ) -> UserProfile:
-    return await update_profile_service(db, payload, user_id, current_user_id)
+    try:
+        return await update_profile_service(db, payload, user_id, current_user_id)
+    except UserException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.message, "error_code": exc.error_code}
+        )
 
 @router.patch('/business/{business_id}', response_model=BusinessDetails)
 async def update_business_details(
