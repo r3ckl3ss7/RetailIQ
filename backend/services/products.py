@@ -1,4 +1,7 @@
-from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
+from exceptions.pruduct import ProductNotFound
+from exceptions.business import BusinessNotFoundException,UnauthorisedBusinessAccess
+from exceptions.database import DatabaseIntegrityException, DatabaseUnexpectedException
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,12 +20,9 @@ async def _get_business_for_user(
 	)
 	business = result.scalar_one_or_none()
 	if not business:
-		raise HTTPException(status_code=404, detail="Business does not exist")
+		raise BusinessNotFoundException()
 	if current_user_id != business.user_id:
-		raise HTTPException(
-			status_code=status.HTTP_403_FORBIDDEN,
-			detail="Access Forbidden | Business does not belong to logged in user!",
-		)
+		raise UnauthorisedBusinessAccess()
 	return business
 
 
@@ -71,7 +71,7 @@ async def get_product_by_id(
 	)
 	product = result.scalar_one_or_none()
 	if not product:
-		raise HTTPException(status_code=404, detail="Product not found")
+		raise ProductNotFound()
 	await _get_business_for_user(db, product.business_id, current_user_id)
 	return product
 
@@ -81,13 +81,13 @@ async def create_product(
 	payload: ProductCreate,
 	current_user_id: int,
 ) -> ProductModel:
-	try:
-		business = await _get_business_for_user(
-			db,
-			payload.business_id,
-			current_user_id,
-		)
+	business = await _get_business_for_user(
+		db,
+		payload.business_id,
+		current_user_id,
+	)
 
+	try:
 		product = ProductModel(
 			name=payload.name,
 			business_id=business.id,
@@ -103,14 +103,15 @@ async def create_product(
 		await db.commit()
 		await db.refresh(product)
 		return product
-	except HTTPException:
+	except IntegrityError as exc:
 		await db.rollback()
-		raise
+		raise DatabaseIntegrityException(
+			"Database integrity violation while creating product."
+		) from exc
 	except Exception as exc:
 		await db.rollback()
-		raise HTTPException(
-			status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-			detail=str(exc),
+		raise DatabaseUnexpectedException(
+			"An unexpected database error occurred while creating product."
 		) from exc
 
 
@@ -125,14 +126,25 @@ async def update_product(
 	)
 	product = result.scalar_one_or_none()
 	if not product:
-		raise HTTPException(status_code=404, detail="Product not found")
+		raise ProductNotFound()
 	await _get_business_for_user(db, product.business_id, current_user_id)
-	update_data = payload.model_dump(exclude_unset=True)
-	for key, value in update_data.items():
-		setattr(product, key, value)
-	await db.commit()
-	await db.refresh(product)
-	return product
+	try:
+		update_data = payload.model_dump(exclude_unset=True)
+		for key, value in update_data.items():
+			setattr(product, key, value)
+		await db.commit()
+		await db.refresh(product)
+		return product
+	except IntegrityError as exc:
+		await db.rollback()
+		raise DatabaseIntegrityException(
+			"Database integrity violation while updating product."
+		) from exc
+	except Exception as exc:
+		await db.rollback()
+		raise DatabaseUnexpectedException(
+			"An unexpected database error occurred while updating product."
+		) from exc
 
 
 async def delete_product(
@@ -145,7 +157,13 @@ async def delete_product(
 	)
 	product = result.scalar_one_or_none()
 	if not product:
-		raise HTTPException(status_code=404, detail="Product not found")
+		raise ProductNotFound()
 	await _get_business_for_user(db, product.business_id, current_user_id)
-	await db.delete(product)
-	await db.commit()
+	try:
+		await db.delete(product)
+		await db.commit()
+	except Exception as exc:
+		await db.rollback()
+		raise DatabaseUnexpectedException(
+			"An unexpected database error occurred while deleting product."
+		) from exc

@@ -2,15 +2,13 @@ from fastapi import Depends, APIRouter, Response, status, HTTPException
 from middlewares.auth import current_user
 from db.database import get_async_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from models.invoice import Customer
-from models.user import Business
 from schemas.invoice import (
     InvoiceCreatePayload,
     InvoiceMetadata,
     InvoiceResponse,
     InvoiceUpdate,
     CustomerOut,
+    InvoiceStatus,
 )
 from services.invoice import (
     create_invoice,
@@ -18,7 +16,11 @@ from services.invoice import (
     get_invoice_metadata,
     update_invoice as update_invoice_service,
     list_invoices,
+    list_customers as list_customers_service,
 )
+from exceptions.business import BusinessException
+from exceptions.invoice import InvoiceException
+from exceptions.database import DatabaseUnexpectedException
 
 router = APIRouter(
     prefix="/invoice",
@@ -32,21 +34,13 @@ async def list_customers(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ) -> list[CustomerOut]:
-    business_result = await db.execute(
-        select(Business).where(Business.id == business_id)
-    )
-    business = business_result.scalar_one_or_none()
-    if not business:
-        raise HTTPException(status_code=404, detail="Business not found")
-    if business.user_id != current_user_id:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    result = await db.execute(
-        select(Customer)
-        .where(Customer.business_id == business_id)
-        .order_by(Customer.name.asc())
-    )
-    return list(result.scalars().all())
+    try:
+        return await list_customers_service(db, business_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
 
 
 @router.get('/list', response_model=list[InvoiceResponse])
@@ -55,21 +49,54 @@ async def list_invoices_route(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ) -> list[InvoiceResponse]:
-    return await list_invoices(db, business_id, current_user_id)
+    try:
+        return await list_invoices(db, business_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
 
 
 
 
 @router.get('/{invoice_id}', response_model=InvoiceResponse)
 async def get_invoice(invoice_id: int, current_user_id:int=Depends(current_user),db: AsyncSession = Depends(get_async_db))->InvoiceResponse:
-    return await get_invoice_by_id(db, invoice_id, current_user_id)
+    try:
+        return await get_invoice_by_id(db, invoice_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except InvoiceException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
 
 
 
 
 @router.get('/',response_model=InvoiceMetadata)
 async def invoice_metadata(business_id:int, current_user_id:int=Depends(current_user),db:AsyncSession=Depends(get_async_db))->InvoiceMetadata:
-    return await get_invoice_metadata(db, business_id, current_user_id)
+    try:
+        return await get_invoice_metadata(db, business_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except InvoiceException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
 
 
 @router.post('/', response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
@@ -79,10 +106,26 @@ async def create_invoice_route(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ) -> InvoiceResponse:
-    invoice, status_code = await create_invoice(db, payload, current_user_id)
-    if status_code == status.HTTP_202_ACCEPTED:
-        response.status_code = status.HTTP_202_ACCEPTED
-    return invoice
+    try:
+        invoice = await create_invoice(db, payload, current_user_id)
+        if invoice.status == InvoiceStatus.PENDING:
+            response.status_code = status.HTTP_202_ACCEPTED
+        return invoice
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except InvoiceException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
 
 
 @router.patch('/{invoice_id}', response_model=InvoiceResponse)
@@ -92,4 +135,20 @@ async def update_invoice(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ) -> InvoiceResponse:
-    return await update_invoice_service(db, invoice_id, payload, current_user_id)
+    try:
+        return await update_invoice_service(db, invoice_id, payload, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except InvoiceException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )

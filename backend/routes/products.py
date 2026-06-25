@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from middlewares.auth import current_user
 from schemas.products import ProductCreate, ProductOut, ProductUpdate
 from db.database import get_async_db
@@ -11,13 +11,23 @@ from services.products import (
     search_products as search_products_service,
     update_product as update_product_service,
 )
+from exceptions.business import BusinessException
+from exceptions.pruduct import ProductException
+from exceptions.database import DatabaseIntegrityException, DatabaseUnexpectedException
 router=APIRouter(
     prefix='/products',
     tags=['products']
 )
 @router.get('/', response_model=list[ProductOut])
 async def get_all_prods(business_id: int, current_user_id: int = Depends(current_user), db: AsyncSession = Depends(get_async_db)):
-    return await list_products_service(db, business_id, current_user_id)
+    try:
+        return await list_products_service(db, business_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    
 
 @router.get('/search', response_model=list[ProductOut])
 async def search_products(
@@ -28,25 +38,58 @@ async def search_products(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
-    return await search_products_service(
-        db,
-        business_id,
-        sku,
-        barcode,
-        name,
-        current_user_id,
-    )
+    try:
+        return await search_products_service(
+            db,
+            business_id,
+            sku,
+            barcode,
+            name,
+            current_user_id,
+        )
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
 
 
 @router.get('/{product_id}', response_model=ProductOut)
 async def get_product(product_id: int, current_user_id: int = Depends(current_user), db: AsyncSession = Depends(get_async_db)):
-    return await get_product_service(db, product_id, current_user_id)
+    try:
+        return await get_product_service(db, product_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except ProductException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
 
 @router.post('/', response_model=ProductOut, status_code=status.HTTP_201_CREATED)
 async def create_product(payload: ProductCreate,
                          current_user_id: int = Depends(current_user),
                          db: AsyncSession = Depends(get_async_db)) -> ProductOut:
-    return await create_product_service(db, payload, current_user_id)
+    try:
+        return await create_product_service(db, payload, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except DatabaseIntegrityException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
 
 
 @router.patch('/{product_id}', response_model=ProductOut)
@@ -56,7 +99,28 @@ async def update_product(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
-    return await update_product_service(db, product_id, payload, current_user_id)
+    try:
+        return await update_product_service(db, product_id, payload, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except ProductException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
+    except DatabaseIntegrityException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
 
 
 @router.delete('/{product_id}', status_code=status.HTTP_204_NO_CONTENT)
@@ -65,7 +129,23 @@ async def delete_product(
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
-    return await delete_product_service(db, product_id, current_user_id)
+    try:
+        return await delete_product_service(db, product_id, current_user_id)
+    except BusinessException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.error_message,
+        )
+    except ProductException as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
+    except DatabaseUnexpectedException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        )
 
     
     
