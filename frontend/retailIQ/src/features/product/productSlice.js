@@ -26,7 +26,13 @@ const productSlice = createSlice({
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload;
+        if (action.payload && typeof action.payload === "object" && "items" in action.payload) {
+          state.data = action.payload.items || [];
+          state.total = action.payload.total || 0;
+        } else {
+          state.data = action.payload || [];
+          state.total = (action.payload || []).length;
+        }
         state.error = null;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
