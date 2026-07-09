@@ -8,14 +8,13 @@ from middlewares.auth import current_user
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
-# Resolve upload directories relative to this file's parent (backend/)
 BASE_DIR = Path(__file__).resolve().parent.parent
 UPLOAD_ROOT = BASE_DIR / "uploads"
 AVATARS_DIR = UPLOAD_ROOT / "avatars"
 LOGOS_DIR = UPLOAD_ROOT / "logos"
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_FILE_SIZE = 5 * 1024 * 1024  
 
 
 def _ensure_dirs():
@@ -67,8 +66,6 @@ async def _save_file(file: UploadFile, dest_dir: Path) -> str:
     with open(file_path, "wb") as f:
         f.write(contents)
 
-    # Return a URL path that matches the static mount in app.py
-    # e.g. /uploads/avatars/abc123.png
     relative = file_path.relative_to(BASE_DIR)
     return f"/{relative.as_posix()}"
 

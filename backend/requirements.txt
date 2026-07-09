@@ -18,5 +18,10 @@ bcrypt==4.0.1
 langchain
 langchain-ollama
 langchain-community
+langchain-groq
+
+pytest
+pytest-asyncio
+httpx
 
 

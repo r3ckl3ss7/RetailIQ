@@ -16,7 +16,6 @@ from routes.upload import router as uploadRouter
 
 app = FastAPI()
 
-# Ensure uploads directory exists relative to app.py
 BASE_DIR = Path(__file__).resolve().parent
 uploads_dir = BASE_DIR / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)

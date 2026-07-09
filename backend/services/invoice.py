@@ -17,7 +17,7 @@ from schemas.invoice import (
 	InvoiceMetadata,
 	InvoiceUpdate,
 )
-from exceptions.business import BusinessNotFoundException, UnauthorisedBusinessAccess
+from exceptions.business import BusinessException, BusinessNotFoundException, UnauthorisedBusinessAccess
 from exceptions.database import DatabaseIntegrityException, DatabaseUnexpectedException
 from exceptions.invoice import InvoiceException, InvoiceNotFoundException, InvalidInvoiceException, InsufficientStockException
 
