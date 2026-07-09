@@ -6,6 +6,7 @@ import invoiceReducer from "../features/invoice/invoiceSlice";
 import chatReducer from "../features/chat/chatSlice";
 import dashboardReducer from "../features/dashboard/dashboardSlice";
 import uploadReducer from "../features/upload/uploadSlice";
+import toastReducer from "../features/toast/toastSlice";
 
 const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ const store = configureStore({
     chat: chatReducer,
     dashboard: dashboardReducer,
     upload: uploadReducer,
+    toast: toastReducer,
   },
 });
 export default store;

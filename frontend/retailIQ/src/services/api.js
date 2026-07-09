@@ -1,6 +1,7 @@
 import axios from "axios";
 import store from "../app/store";
 import { updateToken, logout } from "../features/auth/authSlice";
+import { addToast } from "../features/toast/toastSlice";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -46,6 +47,10 @@ api.interceptors.response.use(
         localStorage.removeItem("user");
         store.dispatch(logout());
         window.location.href = "/login";
+        
+        const errMsg = error.response?.data?.detail || "Session expired.";
+        store.dispatch(addToast({ id: Date.now().toString(), message: errMsg, type: "error" }));
+
         return Promise.reject(error);
       }
 
@@ -92,9 +97,41 @@ api.interceptors.response.use(
         store.dispatch(logout());
         window.location.href = "/login";
 
+        const errMsg = refreshError.response?.data?.detail || "Session expired. Please log in again.";
+        store.dispatch(addToast({ id: Date.now().toString(), message: errMsg, type: "error" }));
+
         return Promise.reject(refreshError);
       }
     }
+
+    // Extract exact message from backend exceptions
+    let message = "An unexpected error occurred.";
+    if (error.response?.data) {
+      const data = error.response.data;
+      if (typeof data.detail === "string") {
+        message = data.detail;
+      } else if (Array.isArray(data.detail)) {
+        message = data.detail.map((err) => {
+          const field = err.loc && err.loc.length > 0 ? err.loc[err.loc.length - 1] : "";
+          return field ? `${field}: ${err.msg}` : err.msg;
+        }).join(", ");
+      } else if (data.message) {
+        message = data.message;
+      } else if (data.error) {
+        message = data.error;
+      }
+    } else if (error.message) {
+      message = error.message;
+    }
+    
+    // Dispatch toast notification for 5 seconds
+    store.dispatch(
+      addToast({
+        id: (Date.now() + Math.random()).toString(),
+        message,
+        type: "error",
+      })
+    );
 
     return Promise.reject(error);
   }
