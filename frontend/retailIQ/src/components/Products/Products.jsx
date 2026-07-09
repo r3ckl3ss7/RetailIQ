@@ -181,6 +181,15 @@ const Products = () => {
       (p.category && p.category.toLowerCase().includes(query))
     );
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedBusinessId]);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const indexOfLastProduct = currentPage * itemsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - itemsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const renderError = (fieldName, formType = "add") => {
     const errs = formType === "add" ? addErrors : editErrors;
     const tch = formType === "add" ? addTouched : editTouched;
@@ -460,7 +469,7 @@ const Products = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredProducts.map((product) => {
+                        {currentProducts.map((product) => {
                           const isLowStock = product.stock === 0;
                           return (
                             <tr key={product.id}>
@@ -516,6 +525,34 @@ const Products = () => {
                         })}
                       </tbody>
                     </table>
+                    {totalPages > 1 && (
+                      <div className="flex-between" style={{ marginTop: "16px", padding: "12px 16px", borderTop: "1px solid var(--slate-100)" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
+                          Showing <strong>{indexOfFirstProduct + 1}</strong> to <strong>{Math.min(indexOfLastProduct, filteredProducts.length)}</strong> of <strong>{filteredProducts.length}</strong> products
+                        </span>
+                        <div className="flex-gap-2">
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(prev => prev - 1)}
+                          >
+                            Previous
+                          </button>
+                          <span style={{ fontSize: "0.875rem", color: "var(--slate-700)", alignSelf: "center", margin: "0 8px" }}>
+                            Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                          </span>
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(prev => prev + 1)}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   )}
                 </div>
               </>

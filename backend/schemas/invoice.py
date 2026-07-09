@@ -120,5 +120,13 @@ class InvoiceCreatePayload(BaseModel):
     items: Annotated[list[InvoiceItemInput], Field(min_length=1)]
 
 
+class PaginatedInvoices(BaseModel):
+    items: list[InvoiceResponse]
+    total: int
+    page: int
+    limit: int
+
+
+
 
 

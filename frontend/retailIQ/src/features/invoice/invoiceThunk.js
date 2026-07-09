@@ -15,11 +15,19 @@ export const fetchInvoiceMetadata = createAsyncThunk(
 );
 export const fetchInvoices = createAsyncThunk(
     "invoices/fetchInvoices",
-    async (businessId, { rejectWithValue }) => {
+    async (arg, { rejectWithValue }) => {
         try {
-            const response = await api.get("/invoice/list", {
-                params: { business_id: businessId },
-            });
+            let params = {};
+            if (typeof arg === "object" && arg !== null) {
+                params = {
+                    business_id: arg.businessId,
+                    ...(arg.page !== undefined && { page: arg.page }),
+                    ...(arg.limit !== undefined && { limit: arg.limit }),
+                };
+            } else {
+                params = { business_id: arg };
+            }
+            const response = await api.get("/invoice/list", { params });
             return response.data;
         } catch (err) {
             return rejectWithValue(err.response?.data || { error: err.message });

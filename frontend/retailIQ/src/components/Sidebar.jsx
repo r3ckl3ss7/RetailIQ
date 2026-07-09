@@ -124,24 +124,6 @@ const Sidebar = () => {
 
       <div className="sidebar-brand">
         <div className="sidebar-brand-logo">
-          {/* <svg
-            width="20"
-            height="20"
-            viewBox="0 0 32 32"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect width="32" height="32" rx="8" fill="var(--brand-500)" />
-            <path
-              d="M8 12L16 8L24 12V20L16 24L8 20V12Z"
-              stroke="white"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-            <path d="M16 16L24 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M16 16V24" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M16 16L8 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-          </svg> */}
           <img src={selectedBusinessLogo} alt={`${selectedBusinessName} logo`} />
         </div>
         <span className="sidebar-brand-name flex-1">{selectedBusinessName}</span>

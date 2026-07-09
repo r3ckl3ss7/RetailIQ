@@ -9,6 +9,7 @@ from schemas.invoice import (
     InvoiceUpdate,
     CustomerOut,
     InvoiceStatus,
+    PaginatedInvoices,
 )
 from services.invoice import (
     create_invoice,
@@ -17,6 +18,7 @@ from services.invoice import (
     update_invoice as update_invoice_service,
     list_invoices,
     list_customers as list_customers_service,
+    count_invoices as count_invoices_service,
 )
 from exceptions.business import BusinessException
 from exceptions.invoice import InvoiceException
@@ -43,14 +45,23 @@ async def list_customers(
         )
 
 
-@router.get('/list', response_model=list[InvoiceResponse])
+@router.get('/list', response_model=PaginatedInvoices)
 async def list_invoices_route(
     business_id: int,
+    page: int | None = None,
+    limit: int | None = None,
     current_user_id: int = Depends(current_user),
     db: AsyncSession = Depends(get_async_db),
-) -> list[InvoiceResponse]:
+):
     try:
-        return await list_invoices(db, business_id, current_user_id)
+        items = await list_invoices(db, business_id, current_user_id, page, limit)
+        total = await count_invoices_service(db, business_id)
+        return {
+            "items": items,
+            "total": total,
+            "page": page if page is not None else 1,
+            "limit": limit if limit is not None else total
+        }
     except BusinessException as exc:
         raise HTTPException(
             status_code=exc.status_code,

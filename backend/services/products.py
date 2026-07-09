@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 from exceptions.pruduct import ProductNotFound
 from exceptions.business import BusinessNotFoundException,UnauthorisedBusinessAccess
 from exceptions.database import DatabaseIntegrityException, DatabaseUnexpectedException
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.products import Product as ProductModel
@@ -30,12 +30,25 @@ async def list_products(
 	db: AsyncSession,
 	business_id: int,
 	current_user_id: int,
+	page: int | None = None,
+	limit: int | None = None,
 ) -> list[ProductModel]:
 	await _get_business_for_user(db, business_id, current_user_id)
-	result = await db.execute(
-		select(ProductModel).where(ProductModel.business_id == business_id)
-	)
+	query = select(ProductModel).where(ProductModel.business_id == business_id)
+	if page is not None and limit is not None:
+		query = query.offset((page - 1) * limit).limit(limit)
+	result = await db.execute(query)
 	return result.scalars().all()
+
+
+async def count_products(
+	db: AsyncSession,
+	business_id: int,
+) -> int:
+	result = await db.execute(
+		select(func.count(ProductModel.id)).where(ProductModel.business_id == business_id)
+	)
+	return result.scalar() or 0
 
 
 async def search_products(

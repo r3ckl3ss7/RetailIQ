@@ -38,3 +38,11 @@ class ProductOut(ProductBase):
 
     class Config:
         from_attributes = True
+
+
+class PaginatedProducts(BaseModel):
+    items: list[ProductOut]
+    total: int
+    page: int
+    limit: int
+

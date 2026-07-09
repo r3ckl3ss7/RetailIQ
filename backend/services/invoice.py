@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 import httpx
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -382,6 +382,8 @@ async def list_invoices(
 	db: AsyncSession,
 	business_id: int,
 	current_user_id: int,
+	page: int | None = None,
+	limit: int | None = None,
 ) -> list[Invoice]:
 	business_result = await db.execute(
 		select(Business).where(Business.id == business_id)
@@ -392,16 +394,26 @@ async def list_invoices(
 	if current_user_id != business.user_id:
 		raise UnauthorisedBusinessAccess()
 
-	result = await db.execute(
-		select(Invoice)
-		.options(
-			selectinload(Invoice.items).selectinload(InvoiceItem.product),
-			selectinload(Invoice.customer)
-		)
-		.where(Invoice.business_id == business_id)
-		.order_by(Invoice.created_at.desc())
-	)
+	query = select(Invoice).options(
+		selectinload(Invoice.items).selectinload(InvoiceItem.product),
+		selectinload(Invoice.customer)
+	).where(Invoice.business_id == business_id).order_by(Invoice.created_at.desc())
+
+	if page is not None and limit is not None:
+		query = query.offset((page - 1) * limit).limit(limit)
+
+	result = await db.execute(query)
 	return list(result.scalars().all())
+
+
+async def count_invoices(
+	db: AsyncSession,
+	business_id: int,
+) -> int:
+	result = await db.execute(
+		select(func.count(Invoice.id)).where(Invoice.business_id == business_id)
+	)
+	return result.scalar() or 0
 
 
 async def list_customers(

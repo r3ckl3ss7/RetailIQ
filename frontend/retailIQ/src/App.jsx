@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import Dashboard from "./components/Dashboard";
@@ -6,11 +7,18 @@ import ProtectedRoute from "./routes/ProtectedRoutes";
 import Business  from "./components/Business/Business";
 import Show_Business from "./components/Business/Show_Business";
 import UpdateBusiness from "./components/Business/UpdateBusiness";
-import Products from "./components/Products/Products";
 import Layout from "./components/Layout";
-import Invoices from "./components/Invoice/Invoices";
 import SettingsLayout from "./components/Settings/SettingsLayout";
 import ToastContainer from "./components/Toast/ToastContainer";
+
+const Products = lazy(() => import("./components/Products/Products"));
+const Invoices = lazy(() => import("./components/Invoice/Invoices"));
+
+const RouteLoader = () => (
+  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "200px", color: "var(--slate-500)", fontWeight: "500" }}>
+    Loading page...
+  </div>
+);
 
 const App = () => {
   return (
@@ -63,7 +71,9 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Layout>
-                <Products />
+                <Suspense fallback={<RouteLoader />}>
+                  <Products />
+                </Suspense>
               </Layout>
             </ProtectedRoute>
           }
@@ -73,7 +83,9 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Layout>
-                <Invoices />
+                <Suspense fallback={<RouteLoader />}>
+                  <Invoices />
+                </Suspense>
               </Layout>
             </ProtectedRoute>
           }

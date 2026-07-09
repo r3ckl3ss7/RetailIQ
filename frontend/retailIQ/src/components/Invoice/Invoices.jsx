@@ -262,6 +262,18 @@ const Invoices = () => {
     );
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedBusinessId]);
+
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const indexOfLastInvoice = currentPage * itemsPerPage;
+  const indexOfFirstInvoice = indexOfLastInvoice - itemsPerPage;
+  const currentInvoices = filteredInvoices.slice(indexOfFirstInvoice, indexOfLastInvoice);
+
   return (
     <div className="dashboard-page">
       <main className="dashboard-main">
@@ -851,7 +863,7 @@ const Invoices = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredInvoices.map((invoice) => (
+                        {currentInvoices.map((invoice) => (
                           <tr key={invoice.id}>
                             <td style={{ fontFamily: "monospace", fontWeight: "600", fontSize: "0.8125rem" }}>
                               #{selectedBusiness?.invoice_prefix || "INV"}-{invoice.id}
@@ -889,6 +901,34 @@ const Invoices = () => {
                         ))}
                       </tbody>
                     </table>
+                    {totalPages > 1 && (
+                      <div className="flex-between" style={{ marginTop: "16px", padding: "12px 16px", borderTop: "1px solid var(--slate-100)" }}>
+                        <span style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
+                          Showing <strong>{indexOfFirstInvoice + 1}</strong> to <strong>{Math.min(indexOfLastInvoice, filteredInvoices.length)}</strong> of <strong>{filteredInvoices.length}</strong> invoices
+                        </span>
+                        <div className="flex-gap-2">
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(prev => prev - 1)}
+                          >
+                            Previous
+                          </button>
+                          <span style={{ fontSize: "0.875rem", color: "var(--slate-700)", alignSelf: "center", margin: "0 8px" }}>
+                            Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                          </span>
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(prev => prev + 1)}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   )}
                 </div>
               </>
