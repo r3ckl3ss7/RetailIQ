@@ -9,7 +9,11 @@ const Sidebar = () => {
   const location = useLocation();
 
   const { user } = useSelector((state) => state.auth);
-
+  const { businesses, selectedBusinessId, loading, error } = useSelector(
+    (state) => state.business
+  );
+  const selectedBusinessName = businesses?.find((business) => business.id === selectedBusinessId)?.name
+  const selectedBusinessLogo = businesses?.find((business) => business.id === selectedBusinessId)?.logo_url
   const [collapsed, setCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem("theme") === "dark" || document.body.classList.contains("dark");
@@ -120,7 +124,7 @@ const Sidebar = () => {
 
       <div className="sidebar-brand">
         <div className="sidebar-brand-logo">
-          <svg
+          {/* <svg
             width="20"
             height="20"
             viewBox="0 0 32 32"
@@ -137,9 +141,10 @@ const Sidebar = () => {
             <path d="M16 16L24 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
             <path d="M16 16V24" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
             <path d="M16 16L8 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          </svg> */}
+          <img src={selectedBusinessLogo} alt={`${selectedBusinessName} logo`} />
         </div>
-        <span className="sidebar-brand-name">RetailIQ</span>
+        <span className="sidebar-brand-name flex-1">{selectedBusinessName}</span>
       </div>
 
       <nav className="sidebar-nav">
