@@ -456,103 +456,105 @@ const Products = () => {
                       </p>
                     </div>
                   ) : (
-                    <table className="retail-table">
-                      <thead>
-                        <tr>
-                          <th>Product Name</th>
-                          <th>SKU</th>
-                          <th>Category</th>
-                          <th style={{ textAlign: "right" }}>MRP</th>
-                          <th style={{ textAlign: "right" }}>Selling Price</th>
-                          <th style={{ textAlign: "center" }}>Stock</th>
-                          <th style={{ textAlign: "center" }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentProducts.map((product) => {
-                          const isLowStock = product.stock === 0;
-                          return (
-                            <tr key={product.id}>
-                              <td style={{ fontWeight: "600", color: "var(--slate-900)" }}>
-                                {product.name}
-                                {product.description && (
-                                  <div style={{ fontWeight: "normal", fontSize: "0.75rem", color: "var(--slate-400)", marginTop: "2px" }}>
-                                    {product.description}
+                    <>
+                      <table className="retail-table">
+                        <thead>
+                          <tr>
+                            <th>Product Name</th>
+                            <th>SKU</th>
+                            <th>Category</th>
+                            <th style={{ textAlign: "right" }}>MRP</th>
+                            <th style={{ textAlign: "right" }}>Selling Price</th>
+                            <th style={{ textAlign: "center" }}>Stock</th>
+                            <th style={{ textAlign: "center" }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentProducts.map((product) => {
+                            const isLowStock = product.stock === 0;
+                            return (
+                              <tr key={product.id}>
+                                <td style={{ fontWeight: "600", color: "var(--slate-900)" }}>
+                                  {product.name}
+                                  {product.description && (
+                                    <div style={{ fontWeight: "normal", fontSize: "0.75rem", color: "var(--slate-400)", marginTop: "2px" }}>
+                                      {product.description}
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                                  {product.sku || "—"}
+                                  </td>
+                                <td>
+                                  {product.category ? (
+                                    <span className="badge badge-neutral">{product.category}</span>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </td>
+                                <td style={{ textAlign: "right", color: "var(--slate-400)" }}>
+                                  {formatCurrency(product.original_price)}
+                                </td>
+                                <td style={{ textAlign: "right", fontWeight: "600", color: "var(--slate-900)" }}>
+                                  {formatCurrency(product.selling_price)}
+                                </td>
+                                <td style={{ textAlign: "center" }}>
+                                  <span className={`badge ${isLowStock ? "badge-danger" : "badge-success"}`}>
+                                    {product.stock} in stock
+                                  </span>
+                                </td>
+                                <td style={{ textAlign: "center" }}>
+                                  <div className="flex-gap-2" style={{ justifyContent: "center" }}>
+                                    <button
+                                      className="btn-secondary"
+                                      style={{ padding: "6px 10px", fontSize: "0.75rem" }}
+                                      onClick={() => setEditingProduct(product)}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      className="btn-danger"
+                                      style={{ padding: "6px 10px", fontSize: "0.75rem", background: "none", border: "1px solid var(--danger-100)", color: "var(--danger-600)" }}
+                                      onClick={() => handleDelete(product.id)}
+                                    >
+                                      Delete
+                                    </button>
                                   </div>
-                                )}
-                              </td>
-                              <td style={{ fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                                {product.sku || "—"}
-                              </td>
-                              <td>
-                                {product.category ? (
-                                  <span className="badge badge-neutral">{product.category}</span>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                              <td style={{ textAlign: "right", color: "var(--slate-400)" }}>
-                                {formatCurrency(product.original_price)}
-                              </td>
-                              <td style={{ textAlign: "right", fontWeight: "600", color: "var(--slate-900)" }}>
-                                {formatCurrency(product.selling_price)}
-                              </td>
-                              <td style={{ textAlign: "center" }}>
-                                <span className={`badge ${isLowStock ? "badge-danger" : "badge-success"}`}>
-                                  {product.stock} in stock
-                                </span>
-                              </td>
-                              <td style={{ textAlign: "center" }}>
-                                <div className="flex-gap-2" style={{ justifyContent: "center" }}>
-                                  <button
-                                    className="btn-secondary"
-                                    style={{ padding: "6px 10px", fontSize: "0.75rem" }}
-                                    onClick={() => setEditingProduct(product)}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    className="btn-danger"
-                                    style={{ padding: "6px 10px", fontSize: "0.75rem", background: "none", border: "1px solid var(--danger-100)", color: "var(--danger-600)" }}
-                                    onClick={() => handleDelete(product.id)}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    {totalPages > 1 && (
-                      <div className="flex-between" style={{ marginTop: "16px", padding: "12px 16px", borderTop: "1px solid var(--slate-100)" }}>
-                        <span style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
-                          Showing <strong>{indexOfFirstProduct + 1}</strong> to <strong>{Math.min(indexOfLastProduct, filteredProducts.length)}</strong> of <strong>{filteredProducts.length}</strong> products
-                        </span>
-                        <div className="flex-gap-2">
-                          <button
-                            className="btn-secondary"
-                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(prev => prev - 1)}
-                          >
-                            Previous
-                          </button>
-                          <span style={{ fontSize: "0.875rem", color: "var(--slate-700)", alignSelf: "center", margin: "0 8px" }}>
-                            Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      {totalPages > 1 && (
+                        <div className="flex-between" style={{ marginTop: "16px", padding: "12px 16px", borderTop: "1px solid var(--slate-100)" }}>
+                          <span style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
+                            Showing <strong>{indexOfFirstProduct + 1}</strong> to <strong>{Math.min(indexOfLastProduct, filteredProducts.length)}</strong> of <strong>{filteredProducts.length}</strong> products
                           </span>
-                          <button
-                            className="btn-secondary"
-                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
-                            disabled={currentPage === totalPages}
-                            onClick={() => setCurrentPage(prev => prev + 1)}
-                          >
-                            Next
-                          </button>
+                          <div className="flex-gap-2">
+                            <button
+                              className="btn-secondary"
+                              style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                              disabled={currentPage === 1}
+                              onClick={() => setCurrentPage(prev => prev - 1)}
+                            >
+                              Previous
+                            </button>
+                            <span style={{ fontSize: "0.875rem", color: "var(--slate-700)", alignSelf: "center", margin: "0 8px" }}>
+                              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                            </span>
+                            <button
+                              className="btn-secondary"
+                              style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                              disabled={currentPage === totalPages}
+                              onClick={() => setCurrentPage(prev => prev + 1)}
+                            >
+                              Next
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </>
                   )}
                 </div>
               </>

@@ -24,4 +24,8 @@ pytest
 pytest-asyncio
 httpx
 
+redis
 
+
+
+redis[hiredis]

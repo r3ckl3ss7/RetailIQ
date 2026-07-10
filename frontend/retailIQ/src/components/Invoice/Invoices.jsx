@@ -601,85 +601,83 @@ const Invoices = () => {
                 <style>{`
                   @media print {
                     body * {
-                      visibility: hidden;
+                      visibility: hidden !important;
                     }
                     #printable-invoice, #printable-invoice * {
-                      visibility: visible;
+                      visibility: visible !important;
                     }
                     #printable-invoice {
-                      position: absolute;
-                      left: 0;
-                      top: 0;
-                      width: 100%;
+                      position: absolute !important;
+                      left: 0 !important;
+                      top: 0 !important;
+                      width: 100% !important;
                       border: none !important;
                       box-shadow: none !important;
-                      padding: 0 !important;
+                      padding: 24px !important;
                       margin: 0 !important;
                       background: white !important;
                       color: black !important;
                     }
-                    .no-print {
+                    html, body, #root, .app-layout, .app-body, .app-content-main, .dashboard-page, .dashboard-main {
+                      height: auto !important;
+                      min-height: 0 !important;
+                      max-height: none !important;
+                      overflow: visible !important;
+                      position: static !important;
+                      margin: 0 !important;
+                      padding: 0 !important;
+                    }
+                    .sidebar, .navbar, .chatbot-container, .no-print {
                       display: none !important;
+                    }
+                    h1, h2, h3, h4, span, td, th, p {
+                      color: #000000 !important;
+                    }
+                    tr {
+                      page-break-inside: avoid !important;
                     }
                   }
                 `}</style>
 
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid var(--slate-100)", paddingBottom: "24px", marginBottom: "24px" }}>
-                  <div>
-                    <h2 style={{ fontSize: "1.75rem", fontWeight: "800", color: "var(--slate-800)", marginBottom: "4px" }}>
-                      {selectedBusiness?.name}
-                    </h2>
-                    <p style={{ fontSize: "0.8125rem", color: "var(--slate-400)" }}>
-                      {selectedBusiness?.address && `${selectedBusiness.address}, `}
-                      {selectedBusiness?.city && `${selectedBusiness.city}, `}
-                      {selectedBusiness?.state && `${selectedBusiness.state}`}
-                    </p>
-                    {selectedBusiness?.gst_number && (
-                      <p style={{ fontSize: "0.8125rem", color: "var(--slate-500)", marginTop: "4px" }}>
-                        GSTIN: <strong>{selectedBusiness.gst_number}</strong>
-                      </p>
-                    )}
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <span style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--slate-400)", letterSpacing: "0.05em" }}>
-                      Tax Invoice
-                    </span>
-                    <h3 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "4px 0" }}>
-                      #{selectedBusiness?.invoice_prefix || "INV"}-{viewingInvoice.id}
-                    </h3>
-                    <div>{getStatusBadge(viewingInvoice.status)}</div>
-                  </div>
+                {/* Business Name Header with line */}
+                <div style={{ textAlign: "center", borderBottom: "3px solid #000", paddingBottom: "16px", marginBottom: "20px" }}>
+                  <h2 style={{ fontSize: "2rem", fontWeight: "800", color: "var(--slate-800)", margin: 0 }}>
+                    {selectedBusiness?.name}
+                  </h2>
+                  <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", marginTop: "6px", marginBottom: 0 }}>
+                    {selectedBusiness?.address && `${selectedBusiness.address}, `}
+                    {selectedBusiness?.city && `${selectedBusiness.city}, `}
+                    {selectedBusiness?.state && `${selectedBusiness.state}`}
+                    {selectedBusiness?.gst_number && ` | GSTIN: ${selectedBusiness.gst_number}`}
+                  </p>
                 </div>
 
-                <div className="grid-2 mb-6" style={{ gap: "24px" }}>
+                {/* Customer Name Header with line */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #000", paddingBottom: "12px", marginBottom: "24px" }}>
                   <div>
-                    <span className="form-label" style={{ color: "var(--slate-400)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                      Bill To:
+                    <span style={{ color: "var(--slate-400)", fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "700" }}>
+                      Bill To
                     </span>
-                    <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--slate-800)", margin: "4px 0 2px 0" }}>
+                    <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "var(--slate-800)", margin: "4px 0 0 0" }}>
                       {viewingInvoice.customer?.name || "Cash Customer"}
-                    </h4>
-                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
-                      Phone: {viewingInvoice.customer?.phone_number || "—"}
-                    </p>
-                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
-                      Email: {viewingInvoice.customer?.email || "—"}
+                    </h3>
+                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", margin: "2px 0 0 0" }}>
+                      {viewingInvoice.customer?.phone_number && `Phone: ${viewingInvoice.customer.phone_number}`}
+                      {viewingInvoice.customer?.email && ` | Email: ${viewingInvoice.customer.email}`}
                     </p>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <span className="form-label" style={{ color: "var(--slate-400)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                      Details:
-                    </span>
-                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", marginTop: "4px" }}>
+                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", margin: 0 }}>
+                      Invoice: <strong>#{selectedBusiness?.invoice_prefix || "INV"}-{viewingInvoice.id}</strong>
+                    </p>
+                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", margin: "4px 0 0 0" }}>
                       Date: <strong>{formatDate(viewingInvoice.created_at)}</strong>
                     </p>
-                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
-                      Source: <span className="badge badge-neutral" style={{ fontSize: "0.6875rem", padding: "2px 6px" }}>{viewingInvoice.source}</span>
-                    </p>
                   </div>
                 </div>
 
-                <div className="retail-table-container mb-6" style={{ border: "1px solid var(--slate-100)" }}>
+                {/* Item Table with Total at Last Row */}
+                <div className="retail-table-container mb-6" style={{ border: "1px solid var(--slate-200)", borderRadius: "6px", overflow: "hidden" }}>
                   <table className="retail-table">
                     <thead>
                       <tr>
@@ -702,40 +700,48 @@ const Invoices = () => {
                           </td>
                         </tr>
                       ))}
+                      <tr style={{ borderTop: "2px solid var(--slate-200)", backgroundColor: "var(--slate-50)" }}>
+                        <td colSpan="3" style={{ textAlign: "right", fontWeight: "700", color: "var(--slate-800)", padding: "12px 16px" }}>
+                          Total Amount:
+                        </td>
+                        <td style={{ textAlign: "right", fontWeight: "800", color: "var(--brand-600)", fontSize: "1.1rem", padding: "12px 16px" }}>
+                          {formatCurrency(viewingInvoice.total)}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "24px" }}>
-                  <div style={{ flex: 1, minWidth: "200px" }}>
+                {/* Bottom area: Stacked values on left; RetailIQ branding on right */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "24px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", margin: 0 }}>
+                      Subtotal: <strong style={{ color: "var(--slate-800)" }}>{formatCurrency(viewingInvoice.subtotal)}</strong>
+                    </p>
+                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", margin: 0 }}>
+                      Tax (GST): <strong style={{ color: "var(--slate-800)" }}>{formatCurrency(viewingInvoice.tax)}</strong>
+                    </p>
+                    <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", margin: 0 }}>
+                      Discount: <strong style={{ color: "var(--slate-800)" }}>-{formatCurrency(viewingInvoice.discount)}</strong>
+                    </p>
                     {viewingInvoice.notes && (
-                      <>
-                        <span className="form-label" style={{ color: "var(--slate-400)", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                          Notes:
-                        </span>
-                        {renderNotes(viewingInvoice.notes)}
-                      </>
+                      <p style={{ fontSize: "0.8125rem", color: "var(--slate-400)", marginTop: "10px", maxWidth: "400px", fontStyle: "italic", margin: "10px 0 0 0" }}>
+                        Notes: {viewingInvoice.notes}
+                      </p>
                     )}
                   </div>
-                  <div style={{ width: "280px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <div className="flex-between">
-                      <span style={{ color: "var(--slate-400)", fontSize: "0.875rem" }}>Subtotal:</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(viewingInvoice.subtotal)}</span>
-                    </div>
-                    <div className="flex-between">
-                      <span style={{ color: "var(--slate-400)", fontSize: "0.875rem" }}>Tax:</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(viewingInvoice.tax)}</span>
-                    </div>
-                    <div className="flex-between">
-                      <span style={{ color: "var(--slate-400)", fontSize: "0.875rem" }}>Discount:</span>
-                      <span style={{ fontWeight: 600 }}>-{formatCurrency(viewingInvoice.discount)}</span>
-                    </div>
-                    <div className="flex-between" style={{ borderTop: "2px solid var(--slate-100)", paddingTop: "12px", marginTop: "4px" }}>
-                      <span style={{ fontWeight: "700", color: "var(--slate-800)" }}>Total:</span>
-                      <span style={{ fontWeight: "800", color: "var(--brand-500)", fontSize: "1.25rem" }}>
-                        {formatCurrency(viewingInvoice.total)}
-                      </span>
-                    </div>
+                  <div style={{
+                    border: "2px solid var(--slate-800)",
+                    padding: "8px 16px",
+                    fontWeight: "800",
+                    fontSize: "1.125rem",
+                    borderRadius: "6px",
+                    color: "var(--slate-800)",
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    backgroundColor: "var(--indigo-100)"
+                  }}>
+                    RetailIQ
                   </div>
                 </div>
 
@@ -752,6 +758,7 @@ const Invoices = () => {
                       </button>
                       <button
                         className="btn-danger"
+                        style={{ width: "auto" }}
                         onClick={() => handleUpdateStatus("CANCELLED")}
                         disabled={statusLoading}
                       >
@@ -763,6 +770,7 @@ const Invoices = () => {
                     <>
                       <button
                         className="btn-danger"
+                        style={{ width: "auto" }}
                         onClick={() => handleUpdateStatus("REFUNDED")}
                         disabled={statusLoading}
                       >
@@ -770,6 +778,7 @@ const Invoices = () => {
                       </button>
                       <button
                         className="btn-danger"
+                        style={{ width: "auto" }}
                         onClick={() => handleUpdateStatus("CANCELLED")}
                         disabled={statusLoading}
                       >
@@ -850,85 +859,87 @@ const Invoices = () => {
                       </p>
                     </div>
                   ) : (
-                    <table className="retail-table">
-                      <thead>
-                        <tr>
-                          <th>Invoice ID</th>
-                          <th>Customer</th>
-                          <th>Date</th>
-                          <th>Source</th>
-                          <th style={{ textAlign: "right" }}>Total Amount</th>
-                          <th style={{ textAlign: "center" }}>Status</th>
-                          <th style={{ textAlign: "center" }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentInvoices.map((invoice) => (
-                          <tr key={invoice.id}>
-                            <td style={{ fontFamily: "monospace", fontWeight: "600", fontSize: "0.8125rem" }}>
-                              #{selectedBusiness?.invoice_prefix || "INV"}-{invoice.id}
-                            </td>
-                            <td style={{ fontWeight: "600", color: "var(--slate-900)" }}>
-                              {invoice.customer?.name || "Cash Customer"}
-                            </td>
-                            <td style={{ color: "var(--slate-500)", fontSize: "0.8125rem" }}>
-                              {formatDate(invoice.created_at)}
-                            </td>
-                            <td>
-                              <span className="badge badge-neutral" style={{ fontSize: "0.6875rem", padding: "2px 6px" }}>
-                                {invoice.source}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: "right", fontWeight: "700", color: "var(--slate-900)" }}>
-                              {formatCurrency(invoice.total)}
-                            </td>
-                            <td style={{ textAlign: "center" }}>
-                              {getStatusBadge(invoice.status)}
-                            </td>
-                            <td style={{ textAlign: "center" }}>
-                              <button
-                                className="btn-secondary"
-                                style={{ padding: "6px 10px", fontSize: "0.75rem" }}
-                                onClick={() => {
-                                  setViewingInvoice(invoice);
-                                  setStatusError("");
-                                }}
-                              >
-                                View Details
-                              </button>
-                            </td>
+                    <>
+                      <table className="retail-table">
+                        <thead>
+                          <tr>
+                            <th>Invoice ID</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Source</th>
+                            <th style={{ textAlign: "right" }}>Total Amount</th>
+                            <th style={{ textAlign: "center" }}>Status</th>
+                            <th style={{ textAlign: "center" }}>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {totalPages > 1 && (
-                      <div className="flex-between" style={{ marginTop: "16px", padding: "12px 16px", borderTop: "1px solid var(--slate-100)" }}>
-                        <span style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
-                          Showing <strong>{indexOfFirstInvoice + 1}</strong> to <strong>{Math.min(indexOfLastInvoice, filteredInvoices.length)}</strong> of <strong>{filteredInvoices.length}</strong> invoices
-                        </span>
-                        <div className="flex-gap-2">
-                          <button
-                            className="btn-secondary"
-                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(prev => prev - 1)}
-                          >
-                            Previous
-                          </button>
-                          <span style={{ fontSize: "0.875rem", color: "var(--slate-700)", alignSelf: "center", margin: "0 8px" }}>
-                            Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                        </thead>
+                        <tbody>
+                          {currentInvoices.map((invoice) => (
+                            <tr key={invoice.id}>
+                              <td style={{ fontFamily: "monospace", fontWeight: "600", fontSize: "0.8125rem" }}>
+                                #{selectedBusiness?.invoice_prefix || "INV"}-{invoice.id}
+                              </td>
+                              <td style={{ fontWeight: "600", color: "var(--slate-900)" }}>
+                                {invoice.customer?.name || "Cash Customer"}
+                              </td>
+                              <td style={{ color: "var(--slate-500)", fontSize: "0.8125rem" }}>
+                                {formatDate(invoice.created_at)}
+                              </td>
+                              <td>
+                                <span className="badge badge-neutral" style={{ fontSize: "0.6875rem", padding: "2px 6px" }}>
+                                  {invoice.source}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: "right", fontWeight: "700", color: "var(--slate-900)" }}>
+                                {formatCurrency(invoice.total)}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                {getStatusBadge(invoice.status)}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <button
+                                  className="btn-secondary"
+                                  style={{ padding: "6px 10px", fontSize: "0.75rem" }}
+                                  onClick={() => {
+                                    setViewingInvoice(invoice);
+                                    setStatusError("");
+                                  }}
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {totalPages > 1 && (
+                        <div className="flex-between" style={{ marginTop: "16px", padding: "12px 16px", borderTop: "1px solid var(--slate-100)" }}>
+                          <span style={{ fontSize: "0.875rem", color: "var(--slate-500)" }}>
+                            Showing <strong>{indexOfFirstInvoice + 1}</strong> to <strong>{Math.min(indexOfLastInvoice, filteredInvoices.length)}</strong> of <strong>{filteredInvoices.length}</strong> invoices
                           </span>
-                          <button
-                            className="btn-secondary"
-                            style={{ padding: "6px 12px", fontSize: "0.875rem" }}
-                            disabled={currentPage === totalPages}
-                            onClick={() => setCurrentPage(prev => prev + 1)}
-                          >
-                            Next
-                          </button>
+                          <div className="flex-gap-2">
+                            <button
+                              className="btn-secondary"
+                              style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                              disabled={currentPage === 1}
+                              onClick={() => setCurrentPage(prev => prev - 1)}
+                            >
+                              Previous
+                            </button>
+                            <span style={{ fontSize: "0.875rem", color: "var(--slate-700)", alignSelf: "center", margin: "0 8px" }}>
+                              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                            </span>
+                            <button
+                              className="btn-secondary"
+                              style={{ padding: "6px 12px", fontSize: "0.875rem" }}
+                              disabled={currentPage === totalPages}
+                              onClick={() => setCurrentPage(prev => prev + 1)}
+                            >
+                              Next
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </>
                   )}
                 </div>
               </>
