@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from models.invoice import Customer, Invoice, InvoiceItem, InvoiceSource, InvoiceStatus
 from models.products import Product
 from models.user import Business
+from services.products import _get_business_for_user
 from schemas.invoice import (
 	InvoiceCreatePayload,
 	InvoiceMetadata,
@@ -142,14 +143,7 @@ async def create_invoice(
 	current_user_id: int,
 ) -> Invoice:
 	try:
-		business_result = await db.execute(
-			select(Business).where(Business.id == payload.business_id)
-		)
-		business = business_result.scalar_one_or_none()
-		if not business:
-			raise BusinessNotFoundException()
-		if business.user_id != current_user_id:
-			raise UnauthorisedBusinessAccess()
+		business = await _get_business_for_user(db, payload.business_id, current_user_id)
 
 		customer_id = await _resolve_customer(db, payload.business_id, payload)
 
@@ -239,12 +233,7 @@ async def get_invoice_by_id(
 		if not invoice:
 			raise InvoiceNotFoundException("Invalid invoice id")
 
-		business_result = await db.execute(
-			select(Business).where(Business.id == invoice.business_id)
-		)
-		business = business_result.scalar_one_or_none()
-		if not business or business.user_id != current_user_id:
-			raise UnauthorisedBusinessAccess()
+		await _get_business_for_user(db, invoice.business_id, current_user_id)
 
 		return invoice
 	except (InvoiceException, BusinessException) as exc:
@@ -260,14 +249,7 @@ async def get_invoice_metadata(
 	business_id: int,
 	current_user_id: int,
 ) -> InvoiceMetadata:
-	business_result = await db.execute(
-		select(Business).where(Business.id == business_id)
-	)
-	business = business_result.scalar_one_or_none()
-	if not business:
-		raise BusinessNotFoundException()
-	if current_user_id != business.user_id:
-		raise UnauthorisedBusinessAccess()
+	await _get_business_for_user(db, business_id, current_user_id)
 
 	invoice_result = await db.execute(
 		select(Invoice)
@@ -308,12 +290,7 @@ async def update_invoice(
 		if not invoice:
 			raise InvoiceNotFoundException("Invalid invoice id")
 
-		business_result = await db.execute(
-			select(Business).where(Business.id == invoice.business_id)
-		)
-		business = business_result.scalar_one_or_none()
-		if not business or business.user_id != current_user_id:
-			raise UnauthorisedBusinessAccess()
+		await _get_business_for_user(db, invoice.business_id, current_user_id)
 
 		update_data = payload.model_dump(exclude_unset=True)
 
@@ -385,14 +362,7 @@ async def list_invoices(
 	page: int | None = None,
 	limit: int | None = None,
 ) -> list[Invoice]:
-	business_result = await db.execute(
-		select(Business).where(Business.id == business_id)
-	)
-	business = business_result.scalar_one_or_none()
-	if not business:
-		raise BusinessNotFoundException()
-	if current_user_id != business.user_id:
-		raise UnauthorisedBusinessAccess()
+	await _get_business_for_user(db, business_id, current_user_id)
 
 	query = select(Invoice).options(
 		selectinload(Invoice.items).selectinload(InvoiceItem.product),
@@ -421,14 +391,7 @@ async def list_customers(
 	business_id: int,
 	current_user_id: int,
 ) -> list[Customer]:
-	business_result = await db.execute(
-		select(Business).where(Business.id == business_id)
-	)
-	business = business_result.scalar_one_or_none()
-	if not business:
-		raise BusinessNotFoundException()
-	if business.user_id != current_user_id:
-		raise UnauthorisedBusinessAccess()
+	await _get_business_for_user(db, business_id, current_user_id)
 
 	result = await db.execute(
 		select(Customer)

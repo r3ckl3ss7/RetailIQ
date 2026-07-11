@@ -125,7 +125,7 @@ def get_agent_executor():
     if _agent_executor is None:
         _db_utility = SQLDatabase(
             chatbot_engine,
-            ignore_tables=["users", "chat_messages"]
+            include_tables=["businesses", "customer", "customer_address", "payment", "invoice", "invoice_items", "products"]
         )
         _agent_executor = create_sql_agent(
             llm=llm,

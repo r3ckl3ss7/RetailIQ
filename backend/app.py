@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +16,8 @@ from routes.analytics import router as analyticsRouter
 from routes.ai import router as aiRouter
 from routes.upload import router as uploadRouter
 
+load_dotenv()
+
 app = FastAPI()
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -22,9 +26,18 @@ uploads_dir.mkdir(parents=True, exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    origins = [origin.strip() for origin in frontend_url.split(",") if origin.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

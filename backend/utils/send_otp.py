@@ -20,7 +20,6 @@ class SendOTP(BaseModel):
 
 
 async def send_mail(payload:SendOTP):
-    print(payload)
     msg=EmailMessage()
     msg['To']=payload['email']
     msg['From']=SMTP_EMAIL
