@@ -16,10 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user import User as UserModel
 from models.auth import Auth as AuthModel
-from schemas.auth import LoginModel, RegisterModel
+from schemas.auth import LoginModel, RegisterModel, ResetPasswordModel
 from middlewares.auth import refresh_token, access_token, verify_token
 
 from utils.generate_otp import gen_otp
+from redis_client import redisClient
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
@@ -50,6 +51,11 @@ async def register_user(db: AsyncSession, payload: RegisterModel):
     if existing:
         raise EmailAlreadyRegisteredException()
     otp=gen_otp()
+    try:
+        redisClient.set(f"otp:{payload.email}", str(otp), ex=900)
+    except Exception as e:
+        print(f"Redis error during registration: {e}")
+
     user = UserModel(
         name=payload.name,
         email=payload.email,
@@ -82,6 +88,10 @@ async def resend_otp(db:AsyncSession,payload:EmailModel):
     if not user:
         raise UserNotFoundException()
     otp=gen_otp()
+    try:
+        redisClient.set(f"otp:{payload.email}", str(otp), ex=900)
+    except Exception as e:
+        print(f"Redis error during resend: {e}")
     
     user.otp = otp
     user.otp_timestamp = datetime.now(timezone.utc)
@@ -101,19 +111,36 @@ async def verify_otp(db:AsyncSession,payload=OTPModel):
     user=result.scalar_one_or_none()
     if not user:
         raise UserNotFoundException()
-    if payload.otp!=user.otp:
-        raise InvalidOTP()
     
-    otp_ts=user.otp_timestamp
-    if not otp_ts:
-        raise InvalidOTP(message="OTP has not been requested or is invalid.")
-    
-    now = datetime.now(timezone.utc)
-    if otp_ts.tzinfo is None:
-        otp_ts = otp_ts.replace(tzinfo=timezone.utc)
+    redis_otp = None
+    try:
+        redis_otp = redisClient.get(f"otp:{payload.email}")
+        if isinstance(redis_otp, bytes):
+            redis_otp = redis_otp.decode('utf-8')
+    except Exception as e:
+        print(f"Redis error during verification lookup: {e}")
+
+    if redis_otp is not None:
+        if int(redis_otp) != payload.otp:
+            raise InvalidOTP()
+        try:
+            redisClient.delete(f"otp:{payload.email}")
+        except Exception as e:
+            print(f"Redis error deleting OTP: {e}")
+    else:
+        if payload.otp!=user.otp:
+            raise InvalidOTP()
         
-    if now - otp_ts > timedelta(minutes=15):
-        raise InvalidOTP(message="OTP has expired. Please request a new one.")
+        otp_ts=user.otp_timestamp
+        if not otp_ts:
+            raise InvalidOTP(message="OTP has not been requested or is invalid.")
+        
+        now = datetime.now(timezone.utc)
+        if otp_ts.tzinfo is None:
+            otp_ts = otp_ts.replace(tzinfo=timezone.utc)
+            
+        if now - otp_ts > timedelta(minutes=15):
+            raise InvalidOTP(message="OTP has expired. Please request a new one.")
         
     user.is_verified = True
     
@@ -281,3 +308,81 @@ async def logout_user(db: AsyncSession, request: Request, response: Response):
     response.delete_cookie("refresh_token", path="/auth")
     
     return {"Message": "Logged out successfully"}
+
+
+async def forgot_password(db: AsyncSession, payload: EmailModel):
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == payload.email)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise UserNotFoundException()
+    
+    otp = gen_otp()
+    try:
+        redisClient.set(f"reset_otp:{payload.email}", str(otp), ex=900)
+    except Exception as e:
+        print(f"Redis error during forgot password: {e}")
+        user.otp = otp
+        user.otp_timestamp = datetime.now(timezone.utc)
+        await db.commit()
+        
+    await send_mail(payload={
+        "email": user.email,
+        "otp": otp
+    })
+    
+    return {
+        "success": True,
+        "Message": "OTP sent to your email successfully"
+    }
+
+
+async def reset_password(db: AsyncSession, payload: ResetPasswordModel):
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == payload.email)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise UserNotFoundException()
+    
+    redis_otp = None
+    try:
+        redis_otp = redisClient.get(f"reset_otp:{payload.email}")
+        if isinstance(redis_otp, bytes):
+            redis_otp = redis_otp.decode('utf-8')
+    except Exception as e:
+        print(f"Redis error during reset verification: {e}")
+        
+    if redis_otp is not None:
+        if int(redis_otp) != payload.otp:
+            raise InvalidOTP()
+        try:
+            redisClient.delete(f"reset_otp:{payload.email}")
+        except Exception as e:
+            print(f"Redis error deleting reset OTP: {e}")
+    else:
+        if payload.otp != user.otp:
+            raise InvalidOTP()
+        
+        otp_ts = user.otp_timestamp
+        if not otp_ts:
+            raise InvalidOTP(message="OTP has not been requested or is invalid.")
+        
+        now = datetime.now(timezone.utc)
+        if otp_ts.tzinfo is None:
+            otp_ts = otp_ts.replace(tzinfo=timezone.utc)
+            
+        if now - otp_ts > timedelta(minutes=15):
+            raise InvalidOTP(message="OTP has expired. Please request a new one.")
+            
+    user.password = hash_password(payload.new_password)
+    user.otp = None
+    user.otp_timestamp = None
+    await db.commit()
+    await db.refresh(user)
+    
+    return {
+        "success": True,
+        "Message": "Password reset successfully"
+    }

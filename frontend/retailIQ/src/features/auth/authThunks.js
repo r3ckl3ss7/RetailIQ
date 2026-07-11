@@ -85,4 +85,34 @@ export const resendRegisterOTP = (email) => async (dispatch) => {
   }
 };
 
+export const forgotPassword = (email) => async (dispatch) => {
+  dispatch(loginStart());
+  try {
+    const response = await api.post("/auth/forgot-password", { email });
+    dispatch(loginFailure(null));
+    return { success: true, message: response.data?.Message || "OTP sent to your email." };
+  } catch (err) {
+    const message = err.response?.data?.detail || "Forgot password request failed.";
+    dispatch(loginFailure(message));
+    return { success: false, message };
+  }
+};
+
+export const resetPassword = (email, otp, newPassword) => async (dispatch) => {
+  dispatch(loginStart());
+  try {
+    const response = await api.post("/auth/reset-password", {
+      email,
+      otp: parseInt(otp),
+      new_password: newPassword
+    });
+    dispatch(loginFailure(null));
+    return { success: true, message: response.data?.Message || "Password reset successfully." };
+  } catch (err) {
+    const message = err.response?.data?.detail || "Password reset failed.";
+    dispatch(loginFailure(message));
+    return { success: false, message };
+  }
+};
+
 

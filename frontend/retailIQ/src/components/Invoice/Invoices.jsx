@@ -10,6 +10,158 @@ import {
 import { fetchProducts } from "../../features/product/productThunk";
 import { clearSelectedInvoice, clearInvoiceError } from "../../features/invoice/invoiceSlice";
 
+const SearchableSelect = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  required = false,
+  emptyMessage = "No results found"
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef(null);
+
+  const selectedOption = options.find((opt) => String(opt.id) === String(value));
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter((opt) =>
+    opt.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="searchable-select-container" ref={containerRef} style={{ position: "relative", width: "100%" }}>
+      <div
+        className="form-select"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          cursor: "pointer",
+          userSelect: "none"
+        }}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          setSearch("");
+        }}
+      >
+        <span style={{ color: selectedOption ? "var(--slate-900)" : "var(--slate-400)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", opacity: 0.6 }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+
+      {isOpen && (
+        <div
+          className="searchable-select-dropdown"
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            zIndex: 999,
+            marginTop: "4px",
+            background: "var(--slate-50)",
+            border: "1px solid var(--slate-200)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "var(--shadow-md)",
+            padding: "6px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+            maxHeight: "260px"
+          }}
+        >
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Type to search..."
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ padding: "6px 8px", fontSize: "0.875rem" }}
+          />
+          <div style={{ overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            {filteredOptions.length === 0 ? (
+              <div style={{ padding: "8px", fontSize: "0.875rem", color: "var(--slate-400)", textAlign: "center" }}>
+                {emptyMessage}
+              </div>
+            ) : (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt.id}
+                  onClick={() => {
+                    onChange(opt.id);
+                    setIsOpen(false);
+                  }}
+                  style={{
+                    padding: "8px",
+                    fontSize: "0.875rem",
+                    cursor: "pointer",
+                    borderRadius: "var(--radius-sm)",
+                    background: String(opt.id) === String(value) ? "var(--brand-50)" : "transparent",
+                    color: String(opt.id) === String(value) ? "var(--brand-600)" : "var(--slate-700)",
+                    fontWeight: String(opt.id) === String(value) ? "600" : "500",
+                    transition: "background 0.15s"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (String(opt.id) !== String(value)) {
+                      e.currentTarget.style.background = "var(--slate-100)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (String(opt.id) !== String(value)) {
+                      e.currentTarget.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+      
+      <input
+        type="text"
+        tabIndex={-1}
+        value={value || ""}
+        onChange={() => {}}
+        required={required}
+        style={{
+          opacity: 0,
+          position: "absolute",
+          top: 0,
+          left: 0,
+          height: "100%",
+          width: "100%",
+          pointerEvents: "none"
+        }}
+      />
+    </div>
+  );
+};
+
 const Invoices = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -386,19 +538,14 @@ const Invoices = () => {
                           />
                         </div>
                       ) : (
-                        <select
-                          className="form-select"
+                        <SearchableSelect
+                          options={customers.map((c) => ({ id: c.id, label: `${c.name} (${c.phone_number})` }))}
                           value={formData.customerId}
-                          onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                          onChange={(val) => setFormData({ ...formData, customerId: val })}
+                          placeholder="-- Select Customer --"
                           required
-                        >
-                          <option value="">-- Select Customer --</option>
-                          {customers.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name} ({c.phone_number})
-                            </option>
-                          ))}
-                        </select>
+                          emptyMessage="No customers found"
+                        />
                       )}
                     </div>
 
@@ -445,21 +592,20 @@ const Invoices = () => {
                   <div style={{ borderTop: "1px solid var(--slate-100)", paddingTop: "16px", marginTop: "8px" }}>
                     <h4 className="mb-4" style={{ color: "var(--slate-800)", fontWeight: 600 }}>Line Items</h4>
                     <div className="flex-gap-2 mb-4 flex-wrap">
-                      <select
-                        className="form-select"
-                        style={{ flex: 1, minWidth: "200px" }}
-                        value={currentItem.product_id}
-                        onChange={(e) =>
-                          setCurrentItem({ ...currentItem, product_id: e.target.value })
-                        }
-                      >
-                        <option value="">-- Add Product --</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({formatCurrency(p.selling_price)} - Stock: {p.stock})
-                          </option>
-                        ))}
-                      </select>
+                      <div style={{ flex: 1, minWidth: "200px" }}>
+                        <SearchableSelect
+                          options={products.map((p) => ({
+                            id: p.id,
+                            label: `${p.name} (${formatCurrency(p.selling_price)} - Stock: ${p.stock})`
+                          }))}
+                          value={currentItem.product_id}
+                          onChange={(val) =>
+                            setCurrentItem({ ...currentItem, product_id: val })
+                          }
+                          placeholder="-- Add Product --"
+                          emptyMessage="No products found"
+                        />
+                      </div>
                       <input
                         className="form-input"
                         type="number"

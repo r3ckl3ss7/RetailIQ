@@ -9,8 +9,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_async_db
-from schemas.auth import LoginModel, RegisterModel
-from services.auth import login_user, logout_user, register_user, refresh_access_token
+from schemas.auth import LoginModel, RegisterModel, ResetPasswordModel
+from services.auth import (
+    login_user,
+    logout_user,
+    register_user,
+    refresh_access_token,
+    forgot_password as forgot_password_service,
+    reset_password as reset_password_service,
+)
 from services.auth import verify_otp as verify_otp_service
 from services.auth import resend_otp as resend_otp_service
 
@@ -84,3 +91,36 @@ async def logout(
     db: Annotated[AsyncSession, Depends(get_async_db)],
 ):
     return await logout_user(db, request, response)
+
+
+@router.post("/forgot-password")
+async def forgot_password_route(
+    payload: EmailModel,
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+):
+    try:
+        return await forgot_password_service(db, payload)
+    except UserNotFoundException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.message, "error_code": exc.error_code}
+        )
+
+
+@router.post("/reset-password")
+async def reset_password_route(
+    payload: ResetPasswordModel,
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+):
+    try:
+        return await reset_password_service(db, payload)
+    except UserNotFoundException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.message, "error_code": exc.error_code}
+        )
+    except InvalidOTP as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.message, "error_code": exc.error_code}
+        )

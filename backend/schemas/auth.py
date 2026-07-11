@@ -24,3 +24,8 @@ class OTPModel(BaseModel):
     
 class EmailModel(BaseModel):
     email: EmailStr
+
+class ResetPasswordModel(BaseModel):
+    email: EmailStr
+    otp: int
+    new_password: Annotated[str, Field(min_length=6)]
