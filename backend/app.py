@@ -37,11 +37,6 @@ async def home():
     return {"Message": "Started"}
 
 
-@app.get('/create-tables')
-async def create_tables():
-    await create_table()
-
-
 @app.get('/db-health')
 async def db_health():
     async with async_engine.connect() as connection:
