@@ -1,3 +1,7 @@
+from exceptions.user import UserNotFoundException
+from schemas.auth import EmailModel
+from schemas.auth import OTPModel
+from exceptions.user import InvalidOTP
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -7,6 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import get_async_db
 from schemas.auth import LoginModel, RegisterModel
 from services.auth import login_user, logout_user, register_user, refresh_access_token
+from services.auth import verify_otp as verify_otp_service
+from services.auth import resend_otp as resend_otp_service
+
+from utils.generate_otp import gen_otp
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -28,6 +36,28 @@ async def register(
             content={"detail": exc.message, "error_code": exc.error_code}
         )
 
+@router.post("/verify-otp")
+async def verify_otp(
+    payload: OTPModel,
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+):
+    try:
+        return await verify_otp_service(db, payload)
+    except InvalidOTP as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.message, "error_code": exc.error_code}
+        )
+
+@router.post('/resend-otp')
+async def resend_otp(payload:EmailModel,db:AsyncSession=Depends(get_async_db)):
+    try:
+        return await resend_otp_service(db, payload)
+    except UserNotFoundException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.message, "error_code": exc.error_code}
+        )
 
 @router.post("/login")
 async def login(

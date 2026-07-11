@@ -17,3 +17,10 @@ class LoginModel(BaseModel):
 class RefreshTokenModel(BaseModel):
     refresh_token: str
 
+
+class OTPModel(BaseModel):
+    email: EmailStr
+    otp: int
+    
+class EmailModel(BaseModel):
+    email: EmailStr

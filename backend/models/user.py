@@ -1,3 +1,5 @@
+from sqlalchemy import Boolean
+from sqlalchemy import null
 from sqlalchemy.orm import relationship
 from sqlalchemy import (
     Integer,
@@ -24,6 +26,12 @@ class User(Base):
 
     avatar_url = Column(Text, nullable=True)
 
+    otp=Column(Integer,nullable=True)
+
+    is_verified=Column(Boolean,default=False)
+
+    otp_timestamp=Column(DateTime(timezone=True),nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     businesses = relationship(

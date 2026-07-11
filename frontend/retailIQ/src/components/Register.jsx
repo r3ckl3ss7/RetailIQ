@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { registerUser } from "../features/auth/authThunks";
+import { registerUser, verifyRegisterOTP, resendRegisterOTP } from "../features/auth/authThunks";
 import { clearError } from "../features/auth/authSlice";
+
 const Register = () => {
   const [form, setForm] = useState({
     name: "",
@@ -10,6 +11,9 @@ const Register = () => {
     password: "",
     confirmPassword: "",
   });
+  const [step, setStep] = useState("register");
+  const [otp, setOtp] = useState("");
+  const [resendMessage, setResendMessage] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState(null);
   const dispatch = useDispatch();
@@ -17,47 +21,76 @@ const Register = () => {
   const { loading, error, isAuthenticated } = useSelector(
     (state) => state.auth
   );
+
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
   useEffect(() => {
     dispatch(clearError());
-  }, [dispatch]);
+  }, [dispatch, step]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setValidationError(null);
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.name.trim().length < 3) {
-      setValidationError("Name must be at least 3 characters.");
-      return;
-    }
-    if (form.password.length < 6) {
-      setValidationError("Password must be at least 6 characters.");
-      return;
-    }
-    if (form.password !== form.confirmPassword) {
-      setValidationError("Passwords do not match.");
-      return;
-    }
-    const result = await dispatch(
-      registerUser(form.name.trim(), form.email, form.password)
-    );
-    if (result?.success) {
-      navigate("/login", {
-        state: { message: "Account created! Please sign in." },
-      });
+    setValidationError(null);
+    setResendMessage(null);
+
+    if (step === "register") {
+      if (form.name.trim().length < 3) {
+        setValidationError("Name must be at least 3 characters.");
+        return;
+      }
+      if (form.password.length < 6) {
+        setValidationError("Password must be at least 6 characters.");
+        return;
+      }
+      if (form.password !== form.confirmPassword) {
+        setValidationError("Passwords do not match.");
+        return;
+      }
+      const result = await dispatch(
+        registerUser(form.name.trim(), form.email, form.password)
+      );
+      if (result?.success) {
+        setStep("otp");
+      }
+    } else if (step === "otp") {
+      if (otp.length !== 6 || isNaN(Number(otp))) {
+        setValidationError("Please enter a valid 6-digit OTP code.");
+        return;
+      }
+      const result = await dispatch(verifyRegisterOTP(form.email, otp));
+      if (result?.success) {
+        navigate("/login", {
+          state: { message: "Account verified successfully! Please sign in." },
+        });
+      }
     }
   };
+
+  const handleResendOTP = async () => {
+    setValidationError(null);
+    setResendMessage(null);
+    const result = await dispatch(resendRegisterOTP(form.email));
+    if (result?.success) {
+      setResendMessage(result.message || "Verification code has been resent to your email.");
+      setTimeout(() => setResendMessage(null), 5000);
+    }
+  };
+
   const displayError = validationError || error;
+
   return (
     <div className="auth-page">
       <div className="auth-card">
-        {}
         <div className="auth-brand">
           <div className="auth-logo">
             <svg
@@ -99,12 +132,18 @@ const Register = () => {
               />
             </svg>
           </div>
-          <h1 className="auth-title">Create Account</h1>
-          <p className="auth-subtitle">Get started with RetailIQ</p>
+          <h1 className="auth-title">
+            {step === "register" ? "Create Account" : "Verify OTP"}
+          </h1>
+          <p className="auth-subtitle">
+            {step === "register"
+              ? "Get started with RetailIQ"
+              : `Enter the 6-digit code sent to ${form.email}`}
+          </p>
         </div>
-        {}
+
         {displayError && (
-          <div className="auth-error" id="register-error">
+          <div className="auth-error" id="auth-error">
             <svg
               width="16"
               height="16"
@@ -116,180 +155,287 @@ const Register = () => {
             <span>{displayError}</span>
           </div>
         )}
-        {}
-        <form onSubmit={handleSubmit} className="auth-form" id="register-form">
-          <div className="form-group">
-            <label htmlFor="name" className="form-label">
-              Full name
-            </label>
-            <div className="input-wrapper">
-              <svg
-                className="input-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                placeholder="John Doe"
-                value={form.name}
-                onChange={handleChange}
-                required
-                minLength={3}
-                maxLength={100}
-                autoComplete="name"
-                className="form-input"
-              />
-            </div>
+
+        {resendMessage && (
+          <div className="auth-success" id="auth-success">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+            >
+              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L6.777 9.767L4.83 7.82a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06-.022l4.5-4.578a.75.75 0 0 0-.022-1.08z" />
+            </svg>
+            <span>{resendMessage}</span>
           </div>
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email address
-            </label>
-            <div className="input-wrapper">
-              <svg
-                className="input-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <path d="M22 4L12 13L2 4" />
-              </svg>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={handleChange}
-                required
-                autoComplete="email"
-                className="form-input"
-              />
+        )}
+
+        {step === "register" ? (
+          <form onSubmit={handleSubmit} className="auth-form" id="register-form">
+            <div className="form-group">
+              <label htmlFor="name" className="form-label">
+                Full name
+              </label>
+              <div className="input-wrapper">
+                <svg
+                  className="input-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  placeholder="John Doe"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  minLength={3}
+                  maxLength={100}
+                  autoComplete="name"
+                  className="form-input"
+                />
+              </div>
             </div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <div className="input-wrapper">
-              <svg
-                className="input-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0110 0v4" />
-              </svg>
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                name="password"
-                placeholder="Min. 6 characters"
-                value={form.password}
-                onChange={handleChange}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                className="form-input"
-              />
+            <div className="form-group">
+              <label htmlFor="email" className="form-label">
+                Email address
+              </label>
+              <div className="input-wrapper">
+                <svg
+                  className="input-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="M22 4L12 13L2 4" />
+                </svg>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  autoComplete="email"
+                  className="form-input"
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label htmlFor="password" className="form-label">
+                Password
+              </label>
+              <div className="input-wrapper">
+                <svg
+                  className="input-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  placeholder="Min. 6 characters"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  className="form-input"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="form-group">
+              <label htmlFor="confirmPassword" className="form-label">
+                Confirm password
+              </label>
+              <div className="input-wrapper">
+                <svg
+                  className="input-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  placeholder="Re-enter password"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  className="form-input"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              id="register-submit"
+              className="auth-btn"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="btn-loader">
+                  <span className="spinner" />
+                  Creating account…
+                </span>
+              ) : (
+                "Create account"
+              )}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="auth-form" id="otp-form">
+            <div className="form-group">
+              <label htmlFor="otp" className="form-label">
+                One-Time Verification Code
+              </label>
+              <div className="input-wrapper">
+                <svg
+                  className="input-icon"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                <input
+                  type="text"
+                  id="otp"
+                  name="otp"
+                  placeholder="123456"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => {
+                    setOtp(e.target.value.replace(/\D/g, ""));
+                    setValidationError(null);
+                  }}
+                  required
+                  autoComplete="one-time-code"
+                  className="form-input"
+                  style={{ letterSpacing: "0.2em", textAlign: "center", fontSize: "1.25rem", fontWeight: "bold" }}
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              id="otp-submit"
+              className="auth-btn"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="btn-loader">
+                  <span className="spinner" />
+                  Verifying OTP…
+                </span>
+              ) : (
+                "Verify OTP"
+              )}
+            </button>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "12px" }}>
               <button
                 type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={handleResendOTP}
+                disabled={loading}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--brand-600)",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  padding: 0
+                }}
               >
-                {showPassword ? (
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
+                Resend OTP
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("register");
+                  setValidationError(null);
+                  setResendMessage(null);
+                }}
+                disabled={loading}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--slate-500)",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  padding: 0
+                }}
+              >
+                Change Email
               </button>
             </div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="confirmPassword" className="form-label">
-              Confirm password
-            </label>
-            <div className="input-wrapper">
-              <svg
-                className="input-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              <input
-                type={showPassword ? "text" : "password"}
-                id="confirmPassword"
-                name="confirmPassword"
-                placeholder="Re-enter password"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                className="form-input"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            id="register-submit"
-            className="auth-btn"
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="btn-loader">
-                <span className="spinner" />
-                Creating account…
-              </span>
-            ) : (
-              "Create account"
-            )}
-          </button>
-        </form>
-        {}
+          </form>
+        )}
+
         <p className="auth-footer">
           Already have an account?{" "}
           <Link to="/login" className="auth-link">
@@ -300,4 +446,5 @@ const Register = () => {
     </div>
   );
 };
+
 export default Register;

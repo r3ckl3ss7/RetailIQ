@@ -7,10 +7,15 @@ const toastSlice = createSlice({
   },
   reducers: {
     addToast: (state, action) => {
+      const message = action.payload.message || "An unexpected error occurred.";
+      const type = action.payload.type || "error";
+      const exists = state.toasts.some(t => t.message === message && t.type === type);
+      if (exists) return;
+
       state.toasts.push({
         id: action.payload.id || Date.now().toString() + Math.random().toString(),
-        message: action.payload.message || "An unexpected error occurred.",
-        type: action.payload.type || "error",
+        message,
+        type,
       });
     },
     removeToast: (state, action) => {

@@ -1,3 +1,9 @@
+from schemas.auth import EmailModel
+from utils.send_otp import send_mail
+from sqlalchemy import update
+from exceptions.user import InvalidOTP
+from exceptions.user import UserNotFoundException
+from schemas.auth import OTPModel
 import os
 import hashlib
 from datetime import datetime, timedelta, timezone
@@ -12,6 +18,8 @@ from models.user import User as UserModel
 from models.auth import Auth as AuthModel
 from schemas.auth import LoginModel, RegisterModel
 from middlewares.auth import refresh_token, access_token, verify_token
+
+from utils.generate_otp import gen_otp
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
@@ -41,17 +49,76 @@ async def register_user(db: AsyncSession, payload: RegisterModel):
 
     if existing:
         raise EmailAlreadyRegisteredException()
-
+    otp=gen_otp()
     user = UserModel(
         name=payload.name,
         email=payload.email,
         password=hash_password(payload.password),
+        otp=otp,
+        is_verified=False,
+        otp_timestamp=datetime.now(timezone.utc)
     )
-
+    await send_mail(payload={
+        "email":user.email,
+        "otp":otp
+    })
+    
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "avatar_url": user.avatar_url,
+        "created_at": user.created_at,
+        "message":"OTP Sent to your email successfully"
+    }
+
+
+async def resend_otp(db:AsyncSession,payload:EmailModel):
+    result=await db.execute(select(UserModel).where(UserModel.email==payload.email))
+    user=result.scalar_one_or_none()
+    if not user:
+        raise UserNotFoundException()
+    otp=gen_otp()
     
+    user.otp = otp
+    user.otp_timestamp = datetime.now(timezone.utc)
+    
+    await db.commit()
+    await db.refresh(user)
+    await send_mail(payload={
+        "email":user.email,
+        "otp":otp
+    })
+    return {
+        "success":True,
+        "Message":"OTP Resent to your email successfully"
+    }
+async def verify_otp(db:AsyncSession,payload=OTPModel):
+    result=await db.execute(select(UserModel).where(UserModel.email==payload.email))
+    user=result.scalar_one_or_none()
+    if not user:
+        raise UserNotFoundException()
+    if payload.otp!=user.otp:
+        raise InvalidOTP()
+    
+    otp_ts=user.otp_timestamp
+    if not otp_ts:
+        raise InvalidOTP(message="OTP has not been requested or is invalid.")
+    
+    now = datetime.now(timezone.utc)
+    if otp_ts.tzinfo is None:
+        otp_ts = otp_ts.replace(tzinfo=timezone.utc)
+        
+    if now - otp_ts > timedelta(minutes=15):
+        raise InvalidOTP(message="OTP has expired. Please request a new one.")
+        
+    user.is_verified = True
+    
+    await db.commit()
+    await db.refresh(user)
     token = refresh_token(user.id)
     hashed_token = hashlib.sha256(token.encode()).hexdigest()
     tkn = AuthModel(
@@ -60,15 +127,11 @@ async def register_user(db: AsyncSession, payload: RegisterModel):
     )
     db.add(tkn)
     await db.commit()
-    
     return {
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "avatar_url": user.avatar_url,
-        "created_at": user.created_at,
+        "success":True,
+        "Message":"OTP verified successfully"
     }
-
+    
 
 async def login_user(db: AsyncSession, payload: LoginModel, response: Response):
     result = await db.execute(

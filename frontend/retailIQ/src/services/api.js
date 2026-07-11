@@ -47,7 +47,7 @@ api.interceptors.response.use(
         localStorage.removeItem("user");
         store.dispatch(logout());
         window.location.href = "/login";
-        
+
         const errMsg = error.response?.data?.detail || "Session expired.";
         store.dispatch(addToast({ id: Date.now().toString(), message: errMsg, type: "error" }));
 
@@ -104,7 +104,6 @@ api.interceptors.response.use(
       }
     }
 
-    // Extract exact message from backend exceptions
     let message = "An unexpected error occurred.";
     if (error.response?.data) {
       const data = error.response.data;
@@ -123,8 +122,7 @@ api.interceptors.response.use(
     } else if (error.message) {
       message = error.message;
     }
-    
-    // Dispatch toast notification for 5 seconds
+
     store.dispatch(
       addToast({
         id: (Date.now() + Math.random()).toString(),

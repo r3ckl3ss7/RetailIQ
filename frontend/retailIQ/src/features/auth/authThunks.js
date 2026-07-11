@@ -1,5 +1,6 @@
 import api from "../../services/api";
 import { loginStart, loginSuccess, loginFailure, logout, updateUserSuccess } from "./authSlice";
+import { clearBusiness } from "../business/businessSlice";
 
 export const loginUser = (email, password) => async (dispatch) => {
   dispatch(loginStart());
@@ -39,6 +40,7 @@ export const logoutUser = () => async (dispatch) => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   dispatch(logout());
+  dispatch(clearBusiness());
 };
 
 export const updateUserProfile = (userId, payload) => async (dispatch) => {
@@ -54,4 +56,33 @@ export const updateUserProfile = (userId, payload) => async (dispatch) => {
     throw new Error(message);
   }
 };
+
+export const verifyRegisterOTP = (email, otp) => async (dispatch) => {
+  dispatch(loginStart());
+  try {
+    const response = await api.post("/auth/verify-otp", { email, otp: Number(otp) });
+    dispatch(loginFailure(null)); 
+    return { success: true, message: response.data?.Message || "OTP verified successfully." };
+  } catch (err) {
+    const message =
+      err.response?.data?.detail || "OTP verification failed. Please try again.";
+    dispatch(loginFailure(message));
+    return { success: false, message };
+  }
+};
+
+export const resendRegisterOTP = (email) => async (dispatch) => {
+  dispatch(loginStart());
+  try {
+    const response = await api.post("/auth/resend-otp", { email });
+    dispatch(loginFailure(null)); 
+    return { success: true, message: response.data?.Message || "OTP resent successfully." };
+  } catch (err) {
+    const message =
+      err.response?.data?.detail || "Failed to resend OTP. Please try again.";
+    dispatch(loginFailure(message));
+    return { success: false, message };
+  }
+};
+
 

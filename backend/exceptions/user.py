@@ -58,3 +58,11 @@ class UserDeletionForbiddenException(UserException):
             error_code="USER_DELETION_FORBIDDEN"
         )
 
+
+
+class InvalidOTP(UserException):
+    """
+    Exception raised when user tries to submit invalid OTP.
+    """
+    def __init__(self,message="Invalid OTP"):
+        super().__init__(message,status_code=400,error_code="INVALID_OTP")
