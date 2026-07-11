@@ -18,8 +18,8 @@ sync_url = DATABASE_URL
 if sync_url.startswith("postgresql+asyncpg://"):
     sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
-engine = create_engine(sync_url, pool_pre_ping=True)
-async_engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(sync_url, pool_pre_ping=True,connect_args={"ssl": "require"})
+async_engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True,connect_args={"ssl": "require"})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 AsyncSessionLocal = async_sessionmaker(
