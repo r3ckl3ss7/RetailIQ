@@ -1,5 +1,5 @@
 import api from "../../services/api";
-import { loginStart, loginSuccess, loginFailure, logout, updateUserSuccess } from "./authSlice";
+import { loginStart, loginSuccess, loginFailure, logout, updateUserSuccess, deleteUserSuccess } from "./authSlice";
 import { clearBusiness } from "../business/businessSlice";
 
 export const loginUser = (email, password) => async (dispatch) => {
@@ -112,6 +112,21 @@ export const resetPassword = (email, otp, newPassword) => async (dispatch) => {
     const message = err.response?.data?.detail || "Password reset failed.";
     dispatch(loginFailure(message));
     return { success: false, message };
+  }
+};
+
+export const deleteUserAccount = (userId) => async (dispatch) => {
+  try {
+    await api.delete(`/user/${userId}`);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    dispatch(deleteUserSuccess());
+    dispatch(clearBusiness());
+    return { success: true };
+  } catch (err) {
+    const message =
+      err.response?.data?.detail || "Failed to delete account. Please try again.";
+    throw new Error(message);
   }
 };
 

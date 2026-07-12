@@ -1,25 +1,88 @@
 import { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { logoutUser } from "../../features/auth/authThunks";
+import { logoutUser, deleteUserAccount } from "../../features/auth/authThunks";
 import PublicProfile from "./PublicProfile";
 import BusinessSettings from "./BusinessSettings";
 
 
 const AccountSettings = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleDelete = async () => {
+    if (!user?.id) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await dispatch(deleteUserAccount(user.id));
+      navigate("/login", { replace: true });
+    } catch (err) {
+      setError(err.message || "Failed to delete account. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="settings-tab-content">
       <h2 className="settings-section-title">Account settings</h2>
+      {error && (
+        <div className="notification-toast error" style={{ marginBottom: "16px", position: "relative", top: "0", left: "0", transform: "none", width: "100%" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
       <div className="settings-card card-danger">
         <h3 className="card-danger-title">Delete Account</h3>
         <p className="card-danger-desc">
           Once you delete your account, there is no going back. Please be certain.
         </p>
-        <button className="btn-danger" style={{ marginTop: "12px", width: "auto" }}>
-          Delete your account
+        <button
+          className="btn-danger"
+          style={{ marginTop: "12px", width: "auto" }}
+          onClick={() => setShowConfirm(true)}
+          disabled={deleting}
+        >
+          {deleting ? "Deleting..." : "Delete your account"}
         </button>
       </div>
+
+      {showConfirm && (
+        <div className="modal-overlay" style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000
+        }}>
+          <div className="settings-card" style={{ maxWidth: "440px", width: "100%", margin: "0 16px" }}>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "12px", color: "var(--slate-900)" }}>Delete Account</h3>
+            <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", marginBottom: "20px" }}>
+              Are you sure you want to delete your account? This will permanently delete your profile, businesses, and all associated data. This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button className="btn-secondary" onClick={() => setShowConfirm(false)} disabled={deleting}>Cancel</button>
+              <button className="btn-danger" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "Deleting..." : "Delete Permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

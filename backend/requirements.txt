@@ -30,3 +30,6 @@ redis
 
 redis[hiredis]
 aiosmtplib
+
+ddtrace
+datadog

@@ -6,6 +6,9 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from sqlalchemy import text
 
+from utils.logging_config import setup_logging
+setup_logging()
+
 from db.database import async_engine
 from models.user import create_table
 from routes.auth import router as authRouter
