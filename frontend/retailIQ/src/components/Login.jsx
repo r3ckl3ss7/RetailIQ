@@ -7,7 +7,7 @@ const Login = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [mode, setMode] = useState("login"); // 'login', 'forgot', 'reset'
+  const [mode, setMode] = useState("login");
   const [forgotEmail, setForgotEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -59,6 +59,11 @@ const Login = () => {
       setLocalError(res.message);
     }
   };
+  const handleDemo = async () => {
+    const demoEmail = import.meta.env.VITE_DEMO_EMAIL
+    const demoPassword = import.meta.env.VITE_DEMO_PASSWORD
+    dispatch(loginUser(demoEmail, demoPassword))
+  }
 
   const handleResetSubmit = async (e) => {
     e.preventDefault();
@@ -83,7 +88,7 @@ const Login = () => {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        {}
+        { }
         <div className="auth-brand">
           <div className="auth-logo">
             <svg
@@ -132,7 +137,7 @@ const Login = () => {
             {mode === "reset" && "Set a new password"}
           </p>
         </div>
-        {}
+        { }
         {(successMessage || localSuccess) && (
           <div className="auth-success" id="login-success">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -141,7 +146,7 @@ const Login = () => {
             <span>{successMessage || localSuccess}</span>
           </div>
         )}
-        {}
+        { }
         {(error || localError) && (
           <div className="auth-error" id="login-error">
             <svg
@@ -155,7 +160,7 @@ const Login = () => {
             <span>{error || localError}</span>
           </div>
         )}
-        {}
+        { }
         {mode === "login" && (
           <form onSubmit={handleSubmit} className="auth-form" id="login-form">
             <div className="form-group">
@@ -481,12 +486,18 @@ const Login = () => {
             </div>
           </form>
         )}
-        {}
+        { }
         <p className="auth-footer">
           Don't have an account?{" "}
           <Link to="/register" className="auth-link">
             Create one
           </Link>
+        </p>
+        <p className="auth-footer">
+          Try demo user account {" "}
+          <button onClick={handleDemo} className="auth-link">
+            Login as demo user
+          </button>
         </p>
       </div>
     </div>
