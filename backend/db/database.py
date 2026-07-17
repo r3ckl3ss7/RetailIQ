@@ -13,13 +13,15 @@ ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL", DATABASE_URL)
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in .env")
 
-# Convert asyncpg scheme to standard postgresql scheme for sync engine
 sync_url = DATABASE_URL
 if sync_url.startswith("postgresql+asyncpg://"):
     sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
-engine = create_engine(sync_url, pool_pre_ping=True,connect_args={"ssl": "require"})
-async_engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True,connect_args={"ssl": "require"})
+db_ssl = os.getenv("DB_SSL", "true").lower() not in ("false", "0")
+connect_args = {"ssl": "require"} if db_ssl else {}
+
+engine = create_engine(sync_url, pool_pre_ping=True, connect_args=connect_args)
+async_engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 AsyncSessionLocal = async_sessionmaker(
