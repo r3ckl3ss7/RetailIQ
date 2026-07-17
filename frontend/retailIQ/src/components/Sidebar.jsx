@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logoutUser } from "../features/auth/authThunks";
 
-const Sidebar = () => {
+const Sidebar = ({ mobileOpen, onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -105,118 +105,123 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className={`sidebar-container ${collapsed ? "collapsed" : ""}`}>
-      <button
-        className="sidebar-toggle-btn"
-        onClick={() => setCollapsed(!collapsed)}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {collapsed ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        ) : (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        )}
-      </button>
-
-      <div className="sidebar-brand">
-        <div className="sidebar-brand-logo">
-          <img src={selectedBusinessLogo} alt={`${selectedBusinessName} logo`} />
-        </div>
-        <span className="sidebar-brand-name flex-1">{selectedBusinessName}</span>
-      </div>
-
-      <nav className="sidebar-nav">
-        {sidebarItems.map((group, groupIdx) => (
-          <div className="sidebar-group" key={groupIdx}>
-            <div className="sidebar-group-title">
-              {collapsed ? group.group.charAt(0) : group.group}
-            </div>
-            {group.items.map((item, itemIdx) => {
-              const active = isActive(item.path);
-              return (
-                <button
-                  key={itemIdx}
-                  className={`sidebar-link ${active ? "active" : ""}`}
-                  onClick={() => handleLinkClick(item)}
-                >
-                  <span className="sidebar-link-icon">{item.icon}</span>
-                  <span className="sidebar-link-text">{item.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        ))}
-
-        <div className="sidebar-group">
-          <div className="sidebar-group-title">
-            {collapsed ? "D" : "Mode"}
-          </div>
-          <div className="sidebar-link">
-            <span className="sidebar-link-icon">
-              {isDarkMode ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5" />
-                  <line x1="12" y1="1" x2="12" y2="3" />
-                  <line x1="12" y1="21" x2="12" y2="23" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                  <line x1="1" y1="12" x2="3" y2="12" />
-                  <line x1="21" y1="12" x2="23" y2="12" />
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </svg>
-              )}
-            </span>
-            <div className="toggle-switch-container">
-              {!collapsed && <span className="sidebar-link-text">Dark mode</span>}
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={isDarkMode}
-                  onChange={(e) => setIsDarkMode(e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="sidebar-footer">
-        <div className="sidebar-user" style={{ cursor: "pointer" }} onClick={() => navigate("/settings")}>
-          <div className="sidebar-user-avatar" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {user?.avatar_url ? (
-              <img src={user.avatar_url} alt={user.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              user?.name?.charAt(0)?.toUpperCase() || "U"
-            )}
-          </div>
-          <div className="sidebar-user-info">
-            <span className="sidebar-user-name">{user?.name || "User"}</span>
-            <span className="sidebar-user-role">Admin Manager</span>
-          </div>
-        </div>
-
-        <button className="sidebar-link" onClick={handleLogout} style={{ color: "var(--danger-600)", borderTop: "1px dashed var(--slate-100)", borderRadius: 0, paddingTop: "12px" }}>
-          <span className="sidebar-link-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16,17 21,12 16,7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
+    <>
+      <aside className={`sidebar-container ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
+        <button
+          className="sidebar-toggle-btn"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
             </svg>
-          </span>
-          <span className="sidebar-link-text">Log out</span>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          )}
         </button>
-      </div>
-    </aside>
+
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-logo">
+            <img src={selectedBusinessLogo} alt={`${selectedBusinessName} logo`} />
+          </div>
+          <span className="sidebar-brand-name flex-1">{selectedBusinessName}</span>
+        </div>
+
+        <nav className="sidebar-nav">
+          {sidebarItems.map((group, groupIdx) => (
+            <div className="sidebar-group" key={groupIdx}>
+              <div className="sidebar-group-title">
+                {collapsed ? group.group.charAt(0) : group.group}
+              </div>
+              {group.items.map((item, itemIdx) => {
+                const active = isActive(item.path);
+                return (
+                  <button
+                    key={itemIdx}
+                    className={`sidebar-link ${active ? "active" : ""}`}
+                    onClick={() => handleLinkClick(item)}
+                  >
+                    <span className="sidebar-link-icon">{item.icon}</span>
+                    <span className="sidebar-link-text">{item.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+
+          <div className="sidebar-group">
+            <div className="sidebar-group-title">
+              {collapsed ? "D" : "Mode"}
+            </div>
+            <div className="sidebar-link">
+              <span className="sidebar-link-icon">
+                {isDarkMode ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                )}
+              </span>
+              <div className="toggle-switch-container">
+                {!collapsed && <span className="sidebar-link-text">Dark mode</span>}
+                <label className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={isDarkMode}
+                    onChange={(e) => setIsDarkMode(e.target.checked)}
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user" style={{ cursor: "pointer" }} onClick={() => navigate("/settings")}>
+            <div className="sidebar-user-avatar" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt={user.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                user?.name?.charAt(0)?.toUpperCase() || "U"
+              )}
+            </div>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">{user?.name || "User"}</span>
+              <span className="sidebar-user-role">Admin Manager</span>
+            </div>
+          </div>
+
+          <button className="sidebar-link" onClick={handleLogout} style={{ color: "var(--danger-600)", borderTop: "1px dashed var(--slate-100)", borderRadius: 0, paddingTop: "12px" }}>
+            <span className="sidebar-link-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16,17 21,12 16,7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </span>
+            <span className="sidebar-link-text">Log out</span>
+          </button>
+        </div>
+      </aside>
+      {mobileOpen && (
+        <div className="sidebar-backdrop" onClick={onClose} />
+      )}
+    </>
   );
 };
 

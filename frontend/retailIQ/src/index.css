@@ -797,6 +797,58 @@ body {
   margin-top: 2px;
 }
 
+/* Mobile Toggler */
+.mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--slate-600);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background-color: var(--slate-100);
+  color: var(--brand-500);
+}
+
+body.dark .mobile-menu-toggle {
+  color: #c9d1d9;
+}
+
+body.dark .mobile-menu-toggle:hover {
+  background-color: #21262d;
+  color: var(--brand-500);
+}
+
+/* Responsive Invoice Layouts */
+.invoice-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 2px solid #000;
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+}
+
+.invoice-footer-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 24px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (max-width: 768px) {
   .dashboard-nav {
     padding: 10px 16px;
@@ -808,6 +860,10 @@ body {
 
   .logout-btn span,
   .user-name {
+    display: none;
+  }
+
+  .nav-title {
     display: none;
   }
 
@@ -830,6 +886,87 @@ body {
 
   .auth-card {
     padding: 24px;
+  }
+
+  /* Hamburger Menu Toggle Display */
+  .mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  /* Sidebar sliding drawer */
+  .sidebar-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    width: 260px !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 9999 !important;
+    box-shadow: var(--shadow-lg) !important;
+  }
+
+  .sidebar-container.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  .sidebar-toggle-btn {
+    display: none !important;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 9998;
+    animation: fadeIn 0.2s ease-in-out;
+  }
+
+  /* Settings Mobile Layout */
+  .settings-body {
+    flex-direction: column !important;
+    padding: 16px !important;
+    gap: 24px !important;
+  }
+
+  .settings-sidebar {
+    width: 100% !important;
+  }
+
+  .settings-header-bar .header-search-bar {
+    display: none !important;
+  }
+
+  .settings-header-bar .header-icon-btn {
+    display: none !important;
+  }
+
+  .public-profile-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Invoice details mobile responsive */
+  #printable-invoice {
+    padding: 16px !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  .invoice-header-flex,
+  .invoice-footer-flex {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  .invoice-header-flex div:last-child {
+    text-align: left !important;
   }
 }
 

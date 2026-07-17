@@ -480,7 +480,7 @@ const Invoices = () => {
                 )}
                 <form onSubmit={handleSubmitInvoice} className="standard-form">
                   <div className="grid-2">
-                    <div className="form-group" style={{ borderRight: "1px solid var(--slate-100)", paddingRight: "16px" }}>
+                    <div className="form-group border-b border-slate-100 pb-4 md:border-b-0 md:pb-0 md:border-r md:pr-4">
                       <div className="flex-between mb-2">
                         <label className="form-label" style={{ marginBottom: 0 }}>Customer Info *</label>
                         <button
@@ -799,7 +799,7 @@ const Invoices = () => {
                 </div>
 
                 {/* Customer Name Header with line */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #000", paddingBottom: "12px", marginBottom: "24px" }}>
+                <div className="invoice-header-flex">
                   <div>
                     <span style={{ color: "var(--slate-400)", fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "700" }}>
                       Bill To
@@ -859,7 +859,7 @@ const Invoices = () => {
                 </div>
 
                 {/* Bottom area: Stacked values on left; RetailIQ branding on right */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "24px" }}>
+                <div className="invoice-footer-flex">
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     <p style={{ fontSize: "0.875rem", color: "var(--slate-500)", margin: 0 }}>
                       Subtotal: <strong style={{ color: "var(--slate-800)" }}>{formatCurrency(viewingInvoice.subtotal)}</strong>
@@ -891,7 +891,7 @@ const Invoices = () => {
                   </div>
                 </div>
 
-                <div className="flex-gap-2 mt-6 no-print" style={{ justifyContent: "flex-end", borderTop: "1px solid var(--slate-100)", paddingTop: "16px" }}>
+                <div className="flex-gap-2 mt-6 no-print" style={{ justifyContent: "flex-end", flexWrap: "wrap", borderTop: "1px solid var(--slate-100)", paddingTop: "16px" }}>
                   {(viewingInvoice.status === "PENDING" || viewingInvoice.status === "DRAFT") && (
                     <>
                       <button
